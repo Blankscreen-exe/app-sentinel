@@ -456,3 +456,49 @@ A `settings` key-value table in the main database, editable from a settings page
 
 - Live-tunable leash; good for demos and for the higher-spec machine.
 - Clear split between tunable limits (settings) and authorization (scope config).
+
+---
+
+## ADR-013: No agent framework (LangChain / LlamaIndex / CrewAI)
+
+- **Date:** 2026-10-11
+- **Status:** accepted
+
+### Context
+
+Judged as a production security tool (not against the project spec, which was
+AI-generated and not authoritative). This system sends real traffic at real backends
+when authorized and produces claims people act on. The security-critical path — deciding
+whether an action is in scope, and classifying the real result — must be deterministic,
+minimal, auditable, and testable in isolation.
+
+### Options considered
+
+- **LangChain** for the agent loop / tool orchestration.
+- **CrewAI** for multi-agent orchestration.
+- **LlamaIndex** for retrieval.
+- **Hand-written orchestration**, model reached via our own gateway.
+
+### Decision
+
+**Hand-write the orchestration loop. Adopt no agent framework.**
+
+Reasoning (production terms, not spec compliance):
+- **Control must stay outside the model and the framework.** LangChain's agent executor
+  owns the loop; we'd fight it to insert our scope gate and verifier between proposal and
+  action. The gate/verifier are the security-critical path and must be plain, auditable code.
+- **Trusted-core minimalism.** A large, fast-moving dependency in the hot path is attack
+  surface, supply-chain risk, and audit burden. Our loop is small; a framework would own
+  the exact part we most need to own.
+- **CrewAI** adds nondeterminism and failure modes (multiple autonomous agents) for no
+  benefit; one bounded actor is safer and cheaper to audit.
+- **Structured output** — the main thing LangChain would provide — we already get from the
+  model via `--json-schema` (Spike 001).
+
+### Consequences
+
+- The agent loop is a hand-written Python state machine; the LLM is one schema-validated
+  request to the gateway (ADR-002/003); tools use our own small registry.
+- **LlamaIndex remains a candidate later, scoped to code retrieval only**, if plain text
+  search over decompiled sources stops scaling. It would be a component in the retrieval
+  step, never an orchestration backbone.
