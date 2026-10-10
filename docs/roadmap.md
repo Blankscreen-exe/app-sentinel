@@ -1,7 +1,7 @@
 # Roadmap
 
 Tracks what is built, in progress, planned, and deliberately deferred. Kept honest:
-nothing is marked done until it has been run and verified (spec §27).
+nothing is marked done until it has been run and verified.
 
 Status key: ✅ done · 🔨 in progress · ⬜ planned · ⏸️ deferred
 
@@ -18,7 +18,7 @@ Build steps 1–4 below, each ending in a demoable, honest state. Everything und
 
 ## Phase 0 — Design ✅
 
-- ✅ Inspect repo and spec.
+- ✅ Inspect repo and the (AI-generated, non-authoritative) idea list in `proj_desc.md`.
 - ✅ Decisions recorded as ADR-001..012 in `DECISIONS.md`.
 - ✅ Spike: Claude Code CLI as a constrained structured-output LLM
   (`docs/spikes/001-claude-code-cli-as-llm.md`).
@@ -89,7 +89,7 @@ issue while refusing to over-claim.
   usage/cost logging, concurrency cap + timeout.
 - ⬜ Provider-independent client in the worker; versioned prompts + Pydantic schemas.
 
-### 3d. Agent loop (spec §7)
+### 3d. Agent loop
 - ⬜ Observe → decide → validate → scope gate → execute → verify → update.
 - ⬜ Deterministic **scope gate** (default deny) and **network scope** (SSRF/rebinding,
   lab exception). Leash enforcement (ADR-011), reading settings (ADR-012).

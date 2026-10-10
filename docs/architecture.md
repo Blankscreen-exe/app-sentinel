@@ -1,9 +1,13 @@
 # Architecture
 
 This document describes the system we are building and how its parts fit together.
-It reflects the decisions recorded in [`DECISIONS.md`](../DECISIONS.md) (ADR-001..012).
+It reflects the decisions recorded in [`DECISIONS.md`](../DECISIONS.md) (ADR-001..013).
 It describes the intended design; sections marked **(planned)** are not yet built.
 See [`roadmap.md`](roadmap.md) for current status.
+
+> Note: `docs/proj_desc.md` is an AI-generated idea list, not an authoritative spec.
+> Decisions here are justified on production-engineering grounds (security,
+> auditability, a minimal trusted core, testability), not by spec compliance.
 
 ---
 
@@ -20,7 +24,7 @@ A user gives the platform an Android APK they are authorized to assess. The plat
    and, only within an authorized scope, run safe checks against the backend.
 5. Verifies each result with deterministic rules and records findings backed by evidence.
 
-The central principle (from the spec):
+The central principle:
 
 > **Discover through analysis, investigate through reasoning, validate through
 > controlled experiments, and report only what the evidence supports.**
@@ -122,7 +126,7 @@ transaction as the main state update. Instead:
 
 ## 6. The agent loop
 
-The loop (spec §7) runs in the worker. Each iteration is one persisted "step" visible in
+The loop runs in the worker. Each iteration is one persisted "step" visible in
 the trace UI.
 
 ```
@@ -215,7 +219,7 @@ the loop itself does not change.
 
 ## 9. Data model (main-db)
 
-Relational schema with Alembic migrations (ADR-004). Core entities (spec §15), trimmed
+Relational schema with Alembic migrations (ADR-004). Core entities, trimmed
 to what the prototype needs:
 
 - **Project** — a unit of work owned by the (single) operator.
@@ -246,7 +250,7 @@ never **authorization**; scope stays in the assessment's scope config.
 
 ---
 
-## 10. Safety controls (spec §12, §18)
+## 10. Safety controls
 
 - **Artifact safety:** size limit, real-zip check, decompression ceiling, path-traversal
   rejection, sha256, never trust the extension. Files stored under internal keys.
@@ -275,7 +279,7 @@ prototype is explicitly **not** multi-user or deployable as-is.
 
 ---
 
-## 12. Observability (spec §21)
+## 12. Observability
 
 Structured JSON logs and a trace id threaded from API request through worker and tool
 execution. Clear separation of error kinds: application, infrastructure, LLM, tool, scope
