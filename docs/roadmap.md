@@ -28,24 +28,37 @@ Build steps 1–4 below, each ending in a demoable, honest state. Everything und
 
 ---
 
-## Step 1 — Foundation 🔨
+## Step 1 — Foundation ✅
 
 Goal: the skeleton boots and is runnable before any feature exists.
+Verified 2026-10-11 via `docker compose build && up` + curl + container checks.
 
-- ⬜ Repo layout: `backend/`, `sandbox/`, `llm-gateway/`, `lab/`, `docs/`, `data/`.
-- ⬜ `docker-compose.yml`: api, worker, sandbox-worker, main-db, sandbox-db, llm-gateway,
-  with the two-network split (ADR-005) and `127.0.0.1` port binds.
-- ⬜ Python project (uv), ruff + mypy + pytest config.
-- ⬜ FastAPI app with a real `/health` (checks DB + queue, not a hardcoded "ok").
-- ⬜ SQLAlchemy models + first Alembic migration on a clean DB.
-- ⬜ Procrastinate wired to main-db; a trivial end-to-end job proves the queue works.
-- ⬜ Jinja + compiled Tailwind base layout served by the API; one page renders.
-- ⬜ Structured JSON logging with a trace id.
-- ⬜ `.env.example`; config loader that fails clearly on missing required values.
+- ✅ Repo layout: `backend/`, `sandbox/`, `llm-gateway/`, `docs/`. (`lab/`, `data/` arrive with the features that need them.)
+- ✅ `docker-compose.yml`: api, worker, sandbox-worker, main-db, sandbox-db, llm-gateway,
+  with the two-network split (ADR-005) and `127.0.0.1` port binds. Verified: sandbox has
+  no internet egress and cannot reach main-db; reaches sandbox-db only.
+- ✅ Python project (uv), ruff + mypy + pytest config.
+- ✅ FastAPI app with a real `/health` (checks DB + queue; returns 503 when degraded —
+  it correctly caught a broken queue during the build).
+- ✅ SQLAlchemy models + first Alembic migration on a clean DB (project, artifact,
+  assessment, setting).
+- ✅ Procrastinate wired to main-db; trivial `ping` job enqueued via API and executed by
+  the worker, trace id flowing through logs.
+- ✅ Jinja base layout + one page served by the API.
+- ✅ Structured JSON logging with a trace id.
+- ✅ `.env.example`; config loader fails clearly (pydantic ValidationError) on missing OR
+  empty required DSN. 3 unit tests pass.
+- ✅ Local posture (ADR-007): Host-header allowlist and `X-App-Sentinel` header on
+  state-changing requests, both verified (foreign host → 400, missing header → 403).
 
-**Acceptance:** `docker compose up` starts everything; migrations apply on a clean DB;
-`/health` returns real status; a page renders; a queued job runs; missing config gives a
-clear error.
+**Deferred within step 1 (honest note):** the Tailwind *standalone build pipeline*
+(ADR-004b) is not yet wired; the foundation ships a small hand-authored
+`static/app.css` placeholder so boot needs no build-time download. To be replaced by
+compiled Tailwind output in a later step.
+
+**Acceptance — met:** `docker compose up` starts all six services; migrations apply on a
+clean DB; `/health` returns real status; the page renders; a queued job runs end to end;
+missing/empty config gives a clear error.
 
 ---
 

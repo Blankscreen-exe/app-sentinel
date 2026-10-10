@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}App Sentinel{% endblock %}</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body class="bg">
+    <header class="topbar">
+      <div class="container row">
+        <span class="brand">app&middot;sentinel</span>
+        <span class="env-tag">{{ env }}</span>
+      </div>
+    </header>
+    <main class="container">{% block content %}{% endblock %}</main>
+    <footer class="container muted small">
+      Local single-operator prototype. A completed assessment does not mean the app is secure.
+    </footer>
+  </body>
+</html>

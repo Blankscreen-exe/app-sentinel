@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Dashboard</h1>
+  <p class="muted">
+    Upload and static analysis arrive in the next step. This page confirms the API,
+    database, and templates are wired.
+  </p>
+</section>
+
+<section class="card">
+  <h2>Projects</h2>
+  {% if projects %}
+  <ul class="list">
+    {% for p in projects %}
+    <li><strong>{{ p.name }}</strong><span class="muted small"> — {{ p.created_at }}</span></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No projects yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Health</h2>
+  <p class="muted small">
+    Live status at <a href="/health">/health</a> (checks the database and job queue).
+  </p>
+</section>
+{% endblock %}

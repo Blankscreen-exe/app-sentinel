@@ -1,0 +1,96 @@
+# App Sentinel — local-only stack (ADR-001).
+# Two networks enforce the trust-zone split (ADR-005):
+#   main-net    : api, worker, main-db, llm-gateway
+#   sandbox-net : sandbox-worker, sandbox-db  (internal: no internet egress)
+# The worker is the ONLY service attached to both networks.
+
+services:
+  main-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: ${MAIN_DB_PASSWORD:-sentinel}
+      POSTGRES_DB: sentinel
+    volumes:
+      - main-db-data:/var/lib/postgresql/data
+    networks: [main-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  sandbox-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: ${SANDBOX_DB_PASSWORD:-sandbox}
+      POSTGRES_DB: sandbox
+    volumes:
+      - sandbox-db-data:/var/lib/postgresql/data
+    networks: [sandbox-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sandbox -d sandbox"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: ./backend
+    command: ["bash", "entrypoint-migrate.sh"]
+    environment:
+      MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
+    depends_on:
+      main-db:
+        condition: service_healthy
+    networks: [main-net]
+    restart: "no"
+
+  api:
+    build: ./backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "127.0.0.1:8000:8000"   # localhost only (ADR-007)
+    depends_on:
+      main-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [main-net]
+
+  worker:
+    build: ./backend
+    command: ["procrastinate", "--app=app.worker.app", "worker"]
+    environment:
+      MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      main-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [main-net, sandbox-net]   # the only service on both
+
+  sandbox-worker:
+    build: ./sandbox
+    depends_on:
+      sandbox-db:
+        condition: service_healthy
+    networks: [sandbox-net]             # isolated: no internet
+
+  llm-gateway:
+    build: ./llm-gateway
+    networks: [main-net]
+
+volumes:
+  main-db-data:
+  sandbox-db-data:
+
+networks:
+  main-net:
+  sandbox-net:
+    internal: true   # no route to the internet (ADR-005)
