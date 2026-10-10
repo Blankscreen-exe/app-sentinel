@@ -309,3 +309,68 @@ apktool is deferred.
 - Evidence can point to decompiled file and line, which is central to the demo.
 - JADX output for obfuscated apps may have unreadable names; findings must still
   cite the location honestly.
+
+---
+
+## ADR-009: Test lab design
+
+- **Date:** 2026-10-10
+- **Status:** accepted
+
+### Context
+
+The demo needs a realistic backend and a mobile artifact whose embedded config points
+at that backend (so active tests stay in-scope and on infrastructure we control).
+
+### Decisions
+
+**Backend:** one local Supabase (containers), loaded with the *schema only* of a
+realistic app. Never production/client data. Seeded with synthetic data for a few
+fake tenants so cross-tenant access can be tested honestly. Two modes:
+- `as-is`: the schema unchanged.
+- `broken`: the same schema plus a lab-only migration planting known-answer bugs
+  (RLS disabled on a table; a permissive `using (true)` policy; an RLS-bypassing view).
+Switched with a single reset command; only one Supabase runs at a time.
+
+**Target app:** a small, purpose-built sample Android app we control, whose embedded
+configuration points at the local Supabase (URL + publishable key + a few
+`from("table")` calls + an exported activity). It must *contain* realistic artifacts to
+discover, not be a functional product. A random ready-made APK is rejected: its backend
+is third-party and out of scope to test.
+
+**Portability:** entire lab is Docker Compose + `.env`; runs on a higher-spec machine
+unchanged. Trim Supabase (no Studio/realtime/email) to fit ~4 GB free RAM.
+
+### Consequences
+
+- The lab does not depend on any real app's frontend.
+- Known-answer bugs give measurable precision/recall later.
+
+---
+
+## ADR-010: Separation of client-audit use from public portfolio use
+
+- **Date:** 2026-10-10
+- **Status:** accepted
+
+### Context
+
+The realistic schema comes from a client-provided app under an audit engagement. The
+project is also intended to be published and to tag the company from the interview.
+Auditing the app and publishing a portfolio tool are distinct uses with different
+permission boundaries.
+
+### Decision
+
+- Developing/testing the tool privately against the client app locally: permitted as
+  part of the audit.
+- Any public artifact (post, repo, screenshots, demo recording) must NOT expose the
+  client app's schema, table names, data, or findings without the client's written
+  authorization.
+- The published demo uses a synthetic app/schema, or a client-approved redacted subset.
+- Confirm the engagement's confidentiality and data-handling terms before publishing.
+
+### Consequences
+
+- Public-facing lab assets will be built from a synthetic schema if client sign-off is
+  not obtained, kept separate from the private client work.
