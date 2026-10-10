@@ -406,7 +406,8 @@ and honors data minimization.
 
 ### Decision
 
-Per assessment, enforced deterministically by our code (not the LLM), from `.env`:
+Per assessment, enforced deterministically by our code (not the LLM). Values are
+runtime-configurable (see ADR-012); `.env` only seeds the initial defaults:
 
 - **Max agent steps:** 15 (guarantees termination; bounds subscription usage).
 - **Max active requests to the target:** 30 (data-minimization ceiling; a safety limit
@@ -421,3 +422,37 @@ Per assessment, enforced deterministically by our code (not the LLM), from `.env
 - Exceeding any limit is a clean stop with a recorded reason, never a crash or a
   silently-"completed" assessment.
 - Numbers are config, raised freely on a higher-spec machine.
+
+---
+
+## ADR-012: Runtime settings table (UI-editable)
+
+- **Date:** 2026-10-10
+- **Status:** accepted
+
+### Context
+
+The agent leash (ADR-011) and similar operational tunables should be changeable from
+the UI without editing `.env` or restarting containers.
+
+### Decision
+
+A `settings` key-value table in the main database, editable from a settings page.
+
+**Precedence (lowest to highest):**
+1. `.env` seeds initial defaults on first boot.
+2. `settings` table = global defaults, UI-editable, override `.env`.
+3. A per-assessment `scope_configuration` may override the global default for that run.
+
+**Rules:**
+- Typed, validated writes (e.g. positive integers, sane min/max ceilings). The UI
+  cannot set nonsensical values (0, absurdly large).
+- Scope: operational *limits* only (step cap, request cap, timeouts). NOT authorization.
+  What a given assessment is allowed to touch stays in its `scope_configuration` and is
+  enforced by the scope gate. A global setting must never be able to widen scope.
+- Each change is recorded (who/when/old→new) for the audit trail.
+
+### Consequences
+
+- Live-tunable leash; good for demos and for the higher-spec machine.
+- Clear split between tunable limits (settings) and authorization (scope config).
