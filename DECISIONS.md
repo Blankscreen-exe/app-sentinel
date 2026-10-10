@@ -152,11 +152,18 @@ Python tooling: uv, ruff, pytest, mypy.
 - Per-step timeouts are enforced by our own code (subprocess/HTTP timeouts), not
   assumed from the queue library.
 
-### 4b. Frontend: React + Vite + TypeScript (deviation from spec)
+### 4b. Frontend: server-rendered Jinja + compiled Tailwind (deviation from spec)
 
-- The spec suggests Next.js. For a local-only dashboard (ADR-001) that talks only to
-  FastAPI, Next.js adds a second server for SSR/SEO features we don't need.
-- A single-page app built with Vite is simpler to run and reason about.
+- Superseded the earlier React+Vite choice (2026-10-10).
+- The spec suggests Next.js/React. For a local-only single-operator dashboard (ADR-001),
+  FastAPI renders Jinja templates directly: no separate frontend container, no Node
+  build step, no typed-API-client layer. Fewer moving parts to run and explain.
+- Tailwind is compiled once to a static CSS file (via the standalone CLI, no Node runtime
+  dependency at serve time).
+- The one interactive requirement, the live agent trace, uses server-sent events plus
+  htmx (small, no build step) to append trace steps as they arrive.
+- Accepted loss: no React/TypeScript SPA or generated typed client. Acceptable for a
+  local prototype; revisit if the UI grows complex.
 
 ### 4c. Artifact and evidence storage: bind-mounted host directory
 
@@ -370,7 +377,47 @@ permission boundaries.
 - The published demo uses a synthetic app/schema, or a client-approved redacted subset.
 - Confirm the engagement's confidentiality and data-handling terms before publishing.
 
+### Update (2026-10-10): client authorization
+
+The client verbally authorized use of the app, stating it was a Lovable experiment he
+alone used for testing, with no real data. This is sufficient for private development.
+Caveat: the authorization is verbal; obtain a one-line written confirmation before any
+public use of the client schema/details.
+
 ### Consequences
 
-- Public-facing lab assets will be built from a synthetic schema if client sign-off is
-  not obtained, kept separate from the private client work.
+- Private development against the client app is authorized.
+- Before publishing anything derived from the client app, secure written sign-off;
+  otherwise publish with a synthetic schema.
+
+---
+
+## ADR-011: Agent budget and stop conditions
+
+- **Date:** 2026-10-10
+- **Status:** accepted
+
+### Context
+
+The agent chooses its own next step, so it needs hard bounds. On a Claude subscription
+(ADR-002) there is no per-call dollar charge, so "budget" here is a leash and a safety
+limit, not a cost control. It enforces termination, respects subscription rate limits,
+and honors data minimization.
+
+### Decision
+
+Per assessment, enforced deterministically by our code (not the LLM), from `.env`:
+
+- **Max agent steps:** 15 (guarantees termination; bounds subscription usage).
+- **Max active requests to the target:** 30 (data-minimization ceiling; a safety limit
+  independent of cost).
+- **Per-step timeouts:** 60s for an LLM decision, 30s for a tool call.
+- **Dollar cap:** omitted while on subscription; token usage is still logged for
+  observability. Reinstated if an API-key adapter is used.
+
+### Consequences
+
+- Every assessment terminates by step cap even if the LLM keeps proposing actions.
+- Exceeding any limit is a clean stop with a recorded reason, never a crash or a
+  silently-"completed" assessment.
+- Numbers are config, raised freely on a higher-spec machine.
