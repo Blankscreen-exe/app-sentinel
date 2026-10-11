@@ -8,8 +8,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Claude Code CLI. Pinned for reproducibility; update deliberately (ADR-003).
-RUN npm install -g @anthropic-ai/claude-code@2.1.28 || npm install -g @anthropic-ai/claude-code
+# Claude Code CLI. Pinned to match the host version (ADR-003); update deliberately.
+RUN npm install -g @anthropic-ai/claude-code@2.1.286 || npm install -g @anthropic-ai/claude-code@latest
 
 ENV PYTHONUNBUFFERED=1 \
     CLAUDE_CONFIG_DIR=/home/node/.claude

@@ -43,15 +43,12 @@ def _log(message: str, **extra: object) -> None:
 def run_claude(system: str, prompt: str, json_schema: dict, model: str) -> dict:
     """Invoke the Claude CLI in an empty temp dir; return the parsed result envelope."""
     with tempfile.TemporaryDirectory() as workdir:
-        schema_path = os.path.join(workdir, "schema.json")
-        with open(schema_path, "w") as f:
-            json.dump(json_schema, f)
-
+        # The CLI expects the schema as an inline JSON string (not a file path).
         cmd = [
             "claude", "-p", prompt,
             "--system-prompt", system,
             "--model", model,
-            "--json-schema", schema_path,
+            "--json-schema", json.dumps(json_schema),
             *_SAFE_FLAGS,
         ]
         started = time.monotonic()
