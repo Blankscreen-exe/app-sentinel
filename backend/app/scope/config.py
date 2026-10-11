@@ -48,16 +48,17 @@ class ScopeConfig(BaseModel):
         return resource_id is not None and resource_id in self.authorized_resources
 
     def host_authorized(self, host: str | None) -> bool:
-        """Exact match, or a bounded suffix wildcard like '*.supabase.co'.
+        """Exact match, a bounded suffix wildcard ('*.supabase.co'), or match-all ('*').
 
-        A bare '*' is intentionally NOT honored — it would authorize every host and defeat
-        default-deny. The SSRF / private-destination guard still applies on top of this.
+        A bare '*' authorizes EVERY host — it removes the per-host allowlist. This is a
+        deliberate operator choice (see `wildcard_all`); the SSRF / private-destination
+        guard still applies on top, so '*' alone cannot reach internal/loopback targets.
         """
         if host is None:
             return False
         for entry in self.authorized_hosts:
             if entry == "*":
-                continue  # refuse match-all
+                return True  # operator explicitly disabled the host allowlist
             if entry == host:
                 return True
             if entry.startswith("*.") and (
@@ -65,6 +66,10 @@ class ScopeConfig(BaseModel):
             ):
                 return True
         return False
+
+    @property
+    def wildcard_all(self) -> bool:
+        return "*" in self.authorized_hosts
 
 
 class ProposedAction(BaseModel):

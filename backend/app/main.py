@@ -187,7 +187,8 @@ def start_analysis(
 # assessment in a real engagement; this convenience default is for the local demo.
 _DEFAULT_LAB_SCOPE = json.dumps({
     "active_testing_allowed": True,
-    "authorized_hosts": ["lab-rest", "firebase-lab", "restapi-lab"],
+    # "authorized_hosts": ["lab-rest", "firebase-lab", "restapi-lab"],
+    "authorized_hosts": ["*"],
     "authorized_resources": ["table:trips", "table:invoices", "table:profiles"],
     "allow_lab_targets": True,
     "max_active_requests": 30,

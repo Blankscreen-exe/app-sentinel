@@ -9,11 +9,14 @@ a controlled lab target — mitigating SSRF and DNS-rebinding.
 from __future__ import annotations
 
 import ipaddress
+import logging
 import socket
 from collections.abc import Callable
 from urllib.parse import urlparse
 
 from app.scope.config import GateDecision, ProposedAction, ScopeConfig
+
+logger = logging.getLogger("scope.gate")
 
 # A resolver maps a hostname to a list of IP strings. Injectable for testing.
 Resolver = Callable[[str], list[str]]
@@ -55,6 +58,14 @@ def check_network_target(
 
     if not scope.host_authorized(host):
         return GateDecision.deny("host_not_authorized", f"host {host!r} is not in scope")
+
+    if scope.wildcard_all:
+        # The per-host allowlist is disabled by '*'. Make this visible; the SSRF guard
+        # below still blocks private/loopback/reserved unless lab targets are authorized.
+        logger.warning(
+            "wildcard host authorization in effect ('*'): %s allowed by match-all", host,
+            extra={"extra": {"host": host, "wildcard_all": True}},
+        )
 
     try:
         ips = resolver(host)

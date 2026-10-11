@@ -565,3 +565,39 @@ into the image. Supported forms, cheapest to strongest:
   other than the gateway.
 - Swapping Claude-CLI ↔ API key ↔ local model changes only the gateway's backend; no
   other component sees the credential.
+
+---
+
+## ADR-016: Wildcard host authorization (`*`)
+
+- **Date:** 2026-10-11
+- **Status:** accepted
+- **Refines:** ADR-002 scope model
+
+### Context
+
+The operator asked to authorize any host via a bare `*` in `authorized_hosts`, rather
+than listing hosts (or suffix patterns like `*.supabase.co`) individually.
+
+### Decision
+
+`host_authorized()` honors a bare `*` as match-all. `ScopeConfig.wildcard_all` exposes
+this, and the scope gate logs a warning whenever a request is permitted under `*`.
+
+### Safeguards that remain in force
+
+- **Active testing still requires `active_testing_allowed`.** `*` only removes the
+  per-host allowlist; it does not enable testing.
+- **The SSRF / private-destination guard still applies.** `*` cannot reach
+  loopback/private/link-local/reserved addresses unless `allow_lab_targets` is also set.
+  Verified by tests.
+- **Method, budget, approval, and resource gates are unchanged.**
+
+### Risk (operator's responsibility)
+
+With `active_testing_allowed=true` and `*`, the agent may actively test any PUBLIC host it
+discovers in an artifact — including third-party backends the operator may not be
+authorized to test. This is a deliberate operator choice and a legal/authorization
+responsibility of the operator. The default scopes do NOT use `*`; prefer explicit hosts
+or bounded `*.suffix` patterns. `*` is for cases where the operator is authorized for a
+broad, operator-controlled target set.

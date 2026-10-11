@@ -150,6 +150,25 @@ def test_suffix_wildcard_host_authorized() -> None:
     assert not scope.host_authorized("notsupabase.co")
 
 
-def test_bare_star_does_not_authorize_everything() -> None:
+def test_bare_star_authorizes_any_host() -> None:
     scope = ScopeConfig(active_testing_allowed=True, authorized_hosts=["*"])
-    assert not scope.host_authorized("anything.example.com")
+    assert scope.host_authorized("anything.example.com")
+    assert scope.wildcard_all
+
+
+def test_bare_star_still_blocks_private_destinations() -> None:
+    # '*' removes the host allowlist but NOT the SSRF / private-IP guard.
+    scope = ScopeConfig(active_testing_allowed=True, authorized_hosts=["*"])
+    action = ProposedAction(
+        tool="anon_read", is_active_network=True, target_url="http://internal.local/x"
+    )
+    d = evaluate(action, scope, resolver=_lab_resolver)  # resolves to a private IP
+    assert not d.allowed and d.code == "blocked_private_destination"
+
+
+def test_bare_star_allows_public_host() -> None:
+    scope = ScopeConfig(active_testing_allowed=True, authorized_hosts=["*"])
+    action = ProposedAction(
+        tool="anon_read", is_active_network=True, target_url="https://anything.example.com/x"
+    )
+    assert evaluate(action, scope, resolver=_public_resolver).allowed
