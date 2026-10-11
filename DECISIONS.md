@@ -531,3 +531,37 @@ before the demo** whether to upgrade to the full Supabase CLI stack for authenti
   Postgres), not the full product." Upgrade path to the full stack kept open.
 - The agent's Supabase tools target the REST API + key formats, which are identical in
   both, so the control plane does not change if we upgrade later.
+
+---
+
+## ADR-015: Gateway credentials — runtime injection, never baked into the image
+
+- **Date:** 2026-10-11
+- **Status:** accepted
+- **Refines:** ADR-003
+
+### Context
+
+The gateway (Zone 3) is the only component that may hold LLM credentials. How the
+credential reaches it must not expose it in the image, git, logs, or other zones.
+
+### Decision
+
+The credential is **injected at runtime into the gateway container only**, never built
+into the image. Supported forms, cheapest to strongest:
+
+1. **Local Claude CLI (default for this prototype):** mount the operator's `~/.claude`
+   **read-only into the gateway only** (not the worker/sandbox). Consistent with the
+   trust-zone rule — the gateway is the designated credential zone.
+2. **API key via git-ignored `.env`** passed only to the gateway service (fine for a
+   single-operator local tool; visible to `docker inspect`, so not for shared hosts).
+3. **Docker secret** (`/run/secrets/...`) — not in image, env listing, or `docker inspect`.
+4. **Secrets manager** (Vault / cloud KMS) — production; fetched at startup via a
+   short-lived identity.
+
+### Invariants (all methods)
+
+- Never in the image, git, or logs; never sent inside an LLM prompt; never in any zone
+  other than the gateway.
+- Swapping Claude-CLI ↔ API key ↔ local model changes only the gateway's backend; no
+  other component sees the credential.
