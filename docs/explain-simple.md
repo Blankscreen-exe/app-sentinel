@@ -203,3 +203,24 @@ their logic in those **text/asset** files we already scan.
 a verdict. "There's a Supabase URL and a public key, and the app reads a `trips` table"
 is a *lead*. Whether the backend actually leaks that table is what the agent will test
 safely later. 13 automated tests pass.
+
+---
+
+## Step 2, slice 4 — The results page (done)
+
+**What this slice does:** shows the analysis results on the artifact's page in a readable
+way, and keeps the honest framing front and centre.
+
+- Findings are **grouped by kind** (endpoints, keys, tables, permissions, …) with a count
+  on each group, so a long list stays scannable.
+- Each row shows the value, a short note, **where** it was found, and small tags like
+  "needs runtime check" (meaning: we can't conclude anything from static analysis alone).
+- A banner states plainly that these are **observations, not confirmed vulnerabilities**.
+- While analysis is still running, the page **auto-refreshes** every few seconds so you
+  see it finish without reloading.
+- If nothing notable is found, it says so — and explicitly that **"no findings" does not
+  mean the app is secure**.
+
+That completes step 2: you can upload a real app, have it safely taken apart in the sealed
+room, and read a clear, honest list of what's inside and where — all with no AI involved
+yet. The AI (the agent) and the safe backend testing come in step 3.

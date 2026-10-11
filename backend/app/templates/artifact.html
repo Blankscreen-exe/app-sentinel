@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+{% block head %}
+  {% if analysis and analysis.status in ["queued", "analyzing"] %}
+  <meta http-equiv="refresh" content="3" />
+  {% endif %}
+{% endblock %}
 {% block content %}
 <section class="card">
   <h1>Artifact</h1>
@@ -41,21 +46,31 @@
 
     {% if discoveries %}
     <h3 class="small">Discoveries <span class="muted">({{ discoveries|length }})</span></h3>
-    <p class="muted small">Observations with provenance — not confirmed vulnerabilities.</p>
+    <p class="muted small">
+      These are <strong>observations with provenance</strong>, not confirmed
+      vulnerabilities. A public client key or a referenced table is a lead to investigate,
+      not a finding. Verification happens later, through authorized checks.
+    </p>
+    {% for kind, items in discoveries|groupby("kind") %}
+    <h4 class="small group">{{ kind }} <span class="muted">({{ items|list|length }})</span></h4>
     <table class="kv">
-      <tr><th class="muted small">Kind</th><th class="muted small">Name</th>
-          <th class="muted small">Where</th><th class="muted small">Via</th></tr>
-      {% for d in discoveries %}
+      {% for d in items %}
       <tr>
-        <td class="small">{{ d.kind }}{% if d.severity_hint %} <span class="muted">({{ d.severity_hint }})</span>{% endif %}</td>
         <td class="small mono">{{ d.name }}</td>
+        <td class="small muted">{{ d.detail or "" }}</td>
         <td class="small muted">{{ d.location }}</td>
-        <td class="small muted">{{ d.detection_method }}</td>
+        <td class="small">
+          {% if d.severity_hint %}<span class="badge">{{ d.severity_hint }}</span>{% endif %}
+          {% if d.needs_runtime_validation %}<span class="badge">needs runtime check</span>{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </table>
+    {% endfor %}
     {% elif analysis.status == "analyzed" %}
-    <p class="muted">No notable discoveries. This does not mean the app is secure.</p>
+    <p class="muted">No notable discoveries were recorded.
+      <strong>This does not mean the app is secure</strong> — only that this static pass
+      found nothing notable in what it can currently inspect.</p>
     {% endif %}
   {% endif %}
 </section>

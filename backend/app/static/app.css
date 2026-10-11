@@ -84,3 +84,6 @@ table.kv td.muted { width: 130px; }
 }
 .badge.ok { color: #7ee787; border-color: #2ea04366; }
 .badge.bad { color: #ff6b6b; border-color: #ff6b6b55; }
+
+h4.group { margin: 16px 0 4px; text-transform: capitalize; }
+th { text-align: left; }

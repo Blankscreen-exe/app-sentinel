@@ -62,7 +62,7 @@ missing/empty config gives a clear error.
 
 ---
 
-## Step 2 — Artifact intake + static analysis 🔨
+## Step 2 — Artifact intake + static analysis ✅ (JADX deferred)
 
 Goal: upload a real APK and get honest, provenance-tagged analysis, with no LLM involved.
 
