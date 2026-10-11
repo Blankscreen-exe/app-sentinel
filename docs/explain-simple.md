@@ -525,3 +525,19 @@ switched off. This is a configuration review, clearly labelled, and simply marke
 
 Both are offered **only when you've authorized them** (a test account for C, admin access
 for D) — discovery never grants these; you opt in. Live-verified in both lab modes.
+
+---
+
+## Post-MVP 4 — A recorded backup demo (done)
+
+**What this adds:** a safety net for showing the tool live. If the internet is down, or
+Claude won't log in, or the lab won't start during an interview, you can still show a
+complete assessment — it's a **saved recording** of a real run, loaded straight into the
+app with one command.
+
+It opens on the normal trace page (steps, reasoning, findings, downloadable report), but
+with a clear **"RECORDED DEMO"** banner so nobody mistakes it for a live run — honesty
+first, always. It needs nothing but the app itself: no AI, no lab, no network.
+
+One command loads it; then you just open the assessment page. That's your break-glass
+demo.

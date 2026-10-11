@@ -225,10 +225,15 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
   Live-verified both modes: broken → 3 findings (anon read, cross-tenant, RLS-disabled);
   correct → none.
 
+### Recorded backup demo ✅ (verified 2026-10-11)
+- ✅ `backend/demo/load_recorded_demo.py` loads a curated, real-shaped broken-mode
+  assessment (anon read + cross-tenant + RLS-disabled findings) as a completed assessment
+  marked **RECORDED DEMO** (banner in the UI). Works offline — API + DB only, no lab, no
+  Claude, no network. Reports (JSON/HTML/PDF) render from it. Idempotent.
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.
-- ⏸️ Recorded backup run for offline demo.
 - ⏸️ API-key LLM adapter / local-model adapter; dollar budget cap.
 - ⏸️ iOS/IPA support.
 - ⏸️ Multi-tenancy and authentication.

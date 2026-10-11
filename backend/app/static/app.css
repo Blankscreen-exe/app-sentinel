@@ -106,3 +106,4 @@ th { text-align: left; }
 .step-invalid_decision, .step-tool_failed { border-left-color: #ff6b6b; }
 .step-stopped { border-left-color: var(--accent); }
 .reason { color: #c9d4e0; margin: 6px 0 2px; }
+.card.recorded { border-color: #d29922; background: #1d1a0f; color: #e3b341; }

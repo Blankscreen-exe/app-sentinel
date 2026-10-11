@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+{% if a.current_stage == "recorded_demo" %}
+<section class="card recorded">
+  <strong>⏺ RECORDED DEMO</strong> — this is a saved past assessment for offline
+  demonstration, not a live run.
+</section>
+{% endif %}
 <section class="card">
   <h1>Assessment trace</h1>
   <p id="status-line">
