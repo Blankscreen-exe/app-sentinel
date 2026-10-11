@@ -22,7 +22,39 @@ def _valid_payload() -> dict:
             "allow_backup": False,
         },
         "manifest_error": None,
+        "discoveries": [
+            {
+                "kind": "client_key",
+                "name": "sb_publish…[REDACTED sha256:5ec69168]",
+                "location": "assets/config.js:4",
+                "detection_method": "content-scan",
+                "detail": "Supabase publishable (public client) key — not a secret",
+                "confidence": "high",
+                "classification": "public_client_key",
+                "needs_runtime_validation": True,
+            },
+            {
+                "kind": "endpoint",
+                "name": "https://abcd1234test.supabase.co",
+                "location": "assets/config.js:3",
+                "detection_method": "content-scan",
+                "confidence": "high",
+            },
+        ],
+        "scan_error": None,
     }
+
+
+def test_ingest_persists_scan_findings_with_classification() -> None:
+    analysis = StaticAnalysis(artifact_id="x", status="analyzing")
+    ingest(analysis, _valid_payload())
+    key = next(d for d in analysis.discoveries if d.kind == "client_key")
+    # The public key is kept only in redacted form and labelled as a public client key.
+    assert "REDACTED" in key.name
+    assert "public_client_key" in (key.detail or "")
+    assert key.needs_runtime_validation is True
+    endpoint = next(d for d in analysis.discoveries if d.kind == "endpoint")
+    assert endpoint.location == "assets/config.js:3"
 
 
 def test_ingest_builds_discoveries_with_provenance() -> None:
@@ -35,8 +67,15 @@ def test_ingest_builds_discoveries_with_provenance() -> None:
     assert ("manifest_flag", "android:debuggable=true") in kinds
     # allow_backup is False -> must NOT be reported
     assert not any(d.name.startswith("android:allowBackup") for d in analysis.discoveries)
-    # every discovery carries detection provenance
-    assert all(d.detection_method == "androguard" and d.location for d in analysis.discoveries)
+    # every discovery carries a location + detection method (provenance)
+    assert all(d.detection_method and d.location for d in analysis.discoveries)
+    # manifest-derived discoveries are attributed to androguard
+    manifest_kinds = {"permission", "exported_component", "manifest_flag"}
+    assert all(
+        d.detection_method == "androguard"
+        for d in analysis.discoveries
+        if d.kind in manifest_kinds
+    )
 
 
 def test_ingest_rejects_malformed_payload() -> None:

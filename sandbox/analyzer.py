@@ -36,11 +36,19 @@ def analyze(path: str) -> dict[str, Any]:
         "structure": _structure(path),
         "manifest": None,
         "manifest_error": None,
+        "discoveries": [],
+        "scan_error": None,
     }
     try:
         out["manifest"] = _manifest_facts(path)
     except Exception as exc:  # noqa: BLE001 - record, never crash the worker
         out["manifest_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        from scanner import scan
+
+        out["discoveries"] = scan(path)
+    except Exception as exc:  # noqa: BLE001
+        out["scan_error"] = f"{type(exc).__name__}: {exc}"
     return out
 
 

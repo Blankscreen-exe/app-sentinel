@@ -18,7 +18,7 @@ RUN uv pip install --system \
     "procrastinate==3.10.0" \
     "psycopg[binary]==3.2.3"
 
-COPY analyzer.py sandbox_app.py entrypoint.sh ./
+COPY analyzer.py scanner.py sandbox_app.py entrypoint.sh ./
 
 RUN useradd --create-home --uid 1000 sandboxuser
 USER sandboxuser

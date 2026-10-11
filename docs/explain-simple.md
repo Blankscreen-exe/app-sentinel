@@ -166,3 +166,40 @@ tool, not a fake.
 travel to the sealed room and the results come back into the real cabinet with three
 tagged findings. Re-running analysis did **not** pile up duplicates. Confirmed the sealed
 room cannot even find the main cabinet's address. 12 automated tests now pass.
+
+---
+
+## Step 2, slice 3 — Reading inside the app (done)
+
+**What this slice does:** so far we only read the app's "label" (the manifest). This slice
+reads *inside* the app's bundled files — its text resources and config — hunting for the
+things that actually matter, and recording where each was found.
+
+What it looks for, with the **file and line number** it came from:
+- **Backend URLs** — especially a Supabase address like `abcd1234test.supabase.co`.
+- **Keys** — and this is the important bit: it **classifies** them instead of screaming
+  "secret!" at everything. A `sb_publishable_…` key is labelled **"public client key —
+  not a secret"** (it's *meant* to be in the app). A `sb_secret_…` key would be flagged
+  as genuinely sensitive. This is the core idea of the whole project: a public key is not
+  a vulnerability by itself.
+- **Which SDKs** the app uses (Supabase, Firebase, …).
+- **Cleartext HTTP** links (unencrypted, a real weakness).
+- **Table and bucket references** — e.g. `from("trips")`, `storage.from("receipts")` —
+  hints at what data the backend holds.
+
+**Redaction happens in the sealed room.** Any value that *is* sensitive gets masked
+(shown as a short prefix plus a fingerprint) *before* it ever leaves the sandbox, so a
+real secret is never written into our database or logs. I verified this: the stored key
+is the redacted form, and a check for any un-redacted key came back zero.
+
+**One honest deferral:** to read the app's *compiled program code* (not just its text
+files) you need a Java tool called **JADX** and a genuinely compiled app to test against.
+My hand-built test app has only a stub for the code part, so verifying JADX now would be
+theatre. I've deferred it to step 3, where the real lab app exists. It matters less than
+it sounds: apps built with web tech (Capacitor/React Native — like the client app) keep
+their logic in those **text/asset** files we already scan.
+
+**Important framing:** everything found here is an **observation with provenance**, never
+a verdict. "There's a Supabase URL and a public key, and the app reads a `trips` table"
+is a *lead*. Whether the backend actually leaks that table is what the agent will test
+safely later. 13 automated tests pass.

@@ -40,6 +40,19 @@ class _Manifest(BaseModel):
     uses_cleartext_traffic: bool | None = None
 
 
+class _ScanFinding(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    kind: str
+    name: str
+    location: str | None = None
+    detection_method: str = "content-scan"
+    detail: str | None = None
+    confidence: str = "medium"
+    severity_hint: str | None = None
+    classification: str | None = None
+    needs_runtime_validation: bool = False
+
+
 class SandboxPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
     schema_version: int
@@ -47,6 +60,8 @@ class SandboxPayload(BaseModel):
     structure: _Structure
     manifest: _Manifest | None = None
     manifest_error: str | None = None
+    discoveries: list[_ScanFinding] = []
+    scan_error: str | None = None
 
 
 def ingest(analysis: StaticAnalysis, raw_payload: dict[str, Any]) -> None:
@@ -62,6 +77,25 @@ def ingest(analysis: StaticAnalysis, raw_payload: dict[str, Any]) -> None:
     )
     analysis.status = "analyzed"
     analysis.completed_at = dt.datetime.now(dt.UTC)
+
+    # Persist content-scan findings (URLs, keys, SDKs, table/bucket refs). These are
+    # already redacted inside the sandbox; classification/severity hints are carried over.
+    for sf in payload.discoveries:
+        detail = sf.detail
+        if sf.classification:
+            detail = f"[{sf.classification}] {detail or ''}".strip()
+        analysis.discoveries.append(
+            Discovery(
+                kind=sf.kind,
+                name=sf.name,
+                detail=detail,
+                location=sf.location,
+                detection_method=sf.detection_method,
+                confidence=sf.confidence,
+                severity_hint=sf.severity_hint,
+                needs_runtime_validation=sf.needs_runtime_validation,
+            )
+        )
 
     if manifest is None:
         return

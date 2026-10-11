@@ -77,9 +77,16 @@ Goal: upload a real APK and get honest, provenance-tagged analysis, with no LLM 
 - ✅ `sandbox-worker`: real Procrastinate worker on sandbox-db running androguard
   (manifest, permissions, exported components, flags). Pinned; isolated (confirmed it
   cannot resolve/reach main-db). JADX decompilation deferred to slice 2.3.
-- 🔨 Analyzers: manifest facts, permissions, exported components, cleartext/debuggable
-  done. Embedded URLs/keys/SDK refs + table/bucket references come with JADX (slice 2.3).
-- ⬜ Secret classification + redaction (a public key is labelled as such, not a "secret").
+- ✅ Analyzers: manifest facts (androguard) + content scan of text resources/assets for
+  Supabase URLs, client keys, SDK markers, endpoints, cleartext HTTP, and table/bucket
+  refs — each with entry+line provenance. Verified end to end 2026-10-11.
+- ⏸️ JADX decompilation (decompiled-Java scanning) deferred: needs a Java runtime in the
+  sandbox image and a real compiled APK to verify honestly; will be added and verified
+  against the lab app in step 3. The content scanner already covers Capacitor/RN-style
+  apps where config lives in assets/JS.
+- ✅ Secret classification + redaction, done inside the sandbox so secrets never leave it:
+  `sb_publishable_`/anon → labelled public client key (kept, redacted); `sb_secret_`/
+  service-role → sensitive, redacted to prefix+hash. Verified no raw secret is stored.
 - ✅ Persist validated results into main-db (untrusted payload validated via Pydantic);
   analysis shown on the artifact page with provenance. Dedicated results page = slice 2.4.
 

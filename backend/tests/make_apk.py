@@ -141,12 +141,36 @@ def build_axml(
     return header + pool + nodes
 
 
-def build_apk(path: str) -> str:
+# Realistic discoverable content placed in asset files (as a Capacitor/RN-style app
+# would ship). Values are synthetic. The "publishable" key is a public client key
+# (NOT a secret); the service_role-looking token is the kind that WOULD be sensitive.
+_ASSET_JS = """
+// bundled app config (synthetic test data)
+const SUPABASE_URL = "https://abcd1234test.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_AbCdEf0123456789xyzTESTvalue";
+const api = "https://api.example-lab.test/v1/trips";
+const insecure = "http://plaintext.example-lab.test/ping";
+supabase.from("trips").select("*");
+supabase.storage.from("receipts").list();
+"""
+
+_STRINGS_XML = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="supabase_url">https://abcd1234test.supabase.co</string>
+  <string name="supabase_key">sb_publishable_AbCdEf0123456789xyzTESTvalue</string>
+</resources>
+"""
+
+
+def build_apk(path: str, *, with_assets: bool = True) -> str:
     """Write a minimal valid APK to ``path`` and return it."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("AndroidManifest.xml", build_axml())
         zf.writestr("classes.dex", b"dex\n035\x00" + b"\x00" * 100)
         zf.writestr("resources.arsc", b"\x02\x00\x0c\x00" + b"\x00" * 8)
+        if with_assets:
+            zf.writestr("assets/config.js", _ASSET_JS)
+            zf.writestr("res/values/strings.xml", _STRINGS_XML)
     return path
 
 
