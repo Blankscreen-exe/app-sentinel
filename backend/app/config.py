@@ -50,6 +50,27 @@ class Settings(BaseSettings):
     # Local-only posture (ADR-007): the browser origin allowed to call the API.
     allowed_origin: str = Field("http://127.0.0.1:8000")
 
+    # --- Default scope for the "Run assessment" button (comma-separated lists). ---
+    # SAFE default: the local lab hosts only. Set DEFAULT_ASSESS_HOSTS=* in your own .env
+    # to authorize any host (operator responsibility; see ADR-016).
+    default_assess_hosts: str = Field("lab-rest,firebase-lab,restapi-lab")
+    default_assess_resources: str = Field("table:trips,table:invoices,table:profiles")
+    default_active_testing: bool = Field(True)
+    default_allow_lab_targets: bool = Field(True)
+
+    def default_scope(self) -> dict:
+        """Build the default assessment scope_configuration from env settings."""
+        def _split(v: str) -> list[str]:
+            return [x.strip() for x in v.split(",") if x.strip()]
+
+        return {
+            "active_testing_allowed": self.default_active_testing,
+            "authorized_hosts": _split(self.default_assess_hosts),
+            "authorized_resources": _split(self.default_assess_resources),
+            "allow_lab_targets": self.default_allow_lab_targets,
+            "max_active_requests": self.max_active_requests,
+        }
+
 
 @lru_cache
 def get_settings() -> Settings:

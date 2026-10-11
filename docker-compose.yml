@@ -54,6 +54,10 @@ services:
       APP_ENV: ${APP_ENV:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATA_DIR: /data
+      DEFAULT_ASSESS_HOSTS: ${DEFAULT_ASSESS_HOSTS:-lab-rest,firebase-lab,restapi-lab}
+      DEFAULT_ASSESS_RESOURCES: ${DEFAULT_ASSESS_RESOURCES:-table:trips,table:invoices,table:profiles}
+      DEFAULT_ACTIVE_TESTING: ${DEFAULT_ACTIVE_TESTING:-true}
+      DEFAULT_ALLOW_LAB_TARGETS: ${DEFAULT_ALLOW_LAB_TARGETS:-true}
     volumes:
       - ./data:/data   # artifact/evidence storage, reachable on the host (ADR-004c)
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"

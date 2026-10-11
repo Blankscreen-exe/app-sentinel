@@ -183,28 +183,22 @@ def start_analysis(
     return RedirectResponse(url=f"/artifacts/{artifact_id}", status_code=303)
 
 
-# Default lab scope: authorizes the local lab target only. The operator edits scope per
-# assessment in a real engagement; this convenience default is for the local demo.
-_DEFAULT_LAB_SCOPE = json.dumps({
-    "active_testing_allowed": True,
-    # "authorized_hosts": ["lab-rest", "firebase-lab", "restapi-lab"],
-    "authorized_hosts": ["*"],
-    "authorized_resources": ["table:trips", "table:invoices", "table:profiles"],
-    "allow_lab_targets": True,
-    "max_active_requests": 30,
-})
-
-
 @app.post("/artifacts/{artifact_id}/assess")
 def start_assessment(
     artifact_id: str, session: Session = Depends(get_session)
 ) -> RedirectResponse:
-    """Create an assessment for an analyzed artifact and enqueue the agent run."""
+    """Create an assessment for an analyzed artifact and enqueue the agent run.
+
+    The default scope comes from env settings (DEFAULT_ASSESS_* — see .env). The safe
+    default authorizes only the local lab hosts; set DEFAULT_ASSESS_HOSTS=* in your own
+    .env to authorize any host (operator responsibility, ADR-016).
+    """
     artifact = session.get(ApplicationArtifact, artifact_id)
     if artifact is None:
         raise HTTPException(status_code=404, detail="artifact not found")
     assessment = Assessment(
-        artifact_id=artifact_id, status="created", scope_configuration=_DEFAULT_LAB_SCOPE
+        artifact_id=artifact_id, status="created",
+        scope_configuration=json.dumps(_settings.default_scope()),
     )
     session.add(assessment)
     session.commit()
