@@ -15,6 +15,7 @@ from app.models import AttackSurfaceResource, Discovery, StaticAnalysis
 _KIND_TO_TYPE = {
     "endpoint": "endpoint",
     "insecure_endpoint": "endpoint",
+    "firebase_db": "firebase_db",
     "table_ref": "table",
     "bucket_ref": "bucket",
     "sdk": "sdk",

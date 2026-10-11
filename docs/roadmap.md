@@ -232,6 +232,14 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
   marked **RECORDED DEMO** (banner in the UI). Works offline — API + DB only, no lab, no
   Claude, no network. Reports (JSON/HTML/PDF) render from it. Idempotent.
 
+### Firebase RTDB check module ✅ (verified 2026-10-11)
+- ✅ Scanner detects Firebase RTDB URLs (`firebaseio.com` / `firebasedatabase.app`).
+- ✅ `test_firebase_rtdb_read` speaks the real RTDB REST contract (`GET /<path>.json`);
+  verifier outcome `firebase_open_read`. Offered when a `firebase_db` resource is present
+  and the host is authorized.
+- ✅ Mock Firebase RTDB lab (`lab/firebase/`, broken/correct via `firebase-mode.sh`).
+  Live-verified both modes: broken → open-read finding, correct → none. 40 unit tests.
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.

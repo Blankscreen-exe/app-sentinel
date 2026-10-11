@@ -25,20 +25,24 @@ from app.scope.gate import Resolver, default_resolver, evaluate
 from app.tools.supabase import (
     AnonReadArgs,
     AuthReadArgs,
+    FirebaseReadArgs,
     classify_client_key,
     review_rls_configuration,
     test_authenticated_tenant_isolation,
+    test_firebase_rtdb_read,
     test_scoped_anonymous_read,
 )
-from app.verify import verify_anonymous_read, verify_tenant_isolation
+from app.verify import verify_anonymous_read, verify_firebase_read, verify_tenant_isolation
 
 logger = logging.getLogger("agent")
 
 _BASE_TOOLS = ["classify_client_key", "test_scoped_anonymous_read"]
 
 
-def _available_tools(scope: ScopeConfig) -> list[str]:
+def _available_tools(scope: ScopeConfig, resources: list[AttackSurfaceResource]) -> list[str]:
     tools = list(_BASE_TOOLS)
+    if any(r.resource_type == "firebase_db" for r in resources):
+        tools.append("test_firebase_rtdb_read")  # Firebase RTDB open-rules check
     if scope.authenticated_test_accounts:
         tools.append("test_authenticated_tenant_isolation")  # Check C
     if scope.admin_dsn:
@@ -82,6 +86,11 @@ def _build_state(scope: ScopeConfig, resources: list[AttackSurfaceResource],
             "note": "reads a table as an authorized authenticated test user and checks whether "
                     "other tenants' rows are visible (cross-tenant isolation). Account supplied automatically.",
         }
+    if any(r.resource_type == "firebase_db" for r in resources):
+        tool_specs["test_firebase_rtdb_read"] = {
+            "arguments": {"base_url": "one of discovered_firebase_dbs", "path": "an RTDB node path, e.g. /"},
+            "note": "checks whether a Firebase Realtime Database node is readable without auth",
+        }
     if scope.admin_dsn:
         tool_specs["review_rls_configuration"] = {
             "arguments": {},
@@ -98,6 +107,7 @@ def _build_state(scope: ScopeConfig, resources: list[AttackSurfaceResource],
             "admin_access_available": bool(scope.admin_dsn),
         },
         "discovered_endpoints": ids("endpoint"),
+        "discovered_firebase_dbs": ids("firebase_db"),
         "discovered_tables": ids("table"),
         "discovered_keys_masked": [k[:12] + "…" for k in keys],
         "available_tools": tool_specs,
@@ -138,8 +148,9 @@ def run_assessment_loop(
     def resolve_table(args: dict[str, Any]) -> str:
         return args.get("table") or str(args.get("resource", "")).split(":")[-1]
 
-    tools = _available_tools(scope)
+    tools = _available_tools(scope, resources)
     accounts = scope.authenticated_test_accounts
+    firebase_dbs = [r.identifier for r in resources if r.resource_type == "firebase_db"]
     used = 0
     findings = 0
     prior: list[str] = []
@@ -197,6 +208,44 @@ def run_assessment_loop(
                     if info.get("rls_enabled") is False:
                         findings += 1
                         _create_rls_finding(session, assessment_id, execution.id, tname, info)
+            continue
+
+        # --- test_firebase_rtdb_read: active, gated, verified ---
+        if decision.action == "test_firebase_rtdb_read":
+            fb_url = decision.arguments.get("base_url") or (firebase_dbs[0] if firebase_dbs else "")
+            for cand in firebase_dbs:  # ground to a discovered Firebase URL
+                hint = decision.arguments.get("base_url", "")
+                if hint and (hint == cand or urlparse(cand).hostname == urlparse(hint).hostname):
+                    fb_url = cand
+                    break
+            path = decision.arguments.get("path", "/")
+            fb_host = urlparse(fb_url).hostname
+            fb_action = ProposedAction(
+                tool=decision.action, is_active_network=True,
+                target_url=fb_url, target_host=fb_host, method="GET",
+            )
+            gate = evaluate(fb_action, scope, active_requests_used=used, resolver=resolver)
+            if not gate.allowed:
+                prior[-1] += f" -> blocked ({gate.code})"
+                _record(session, assessment_id, step, decision.action, decision.arguments,
+                        "gate_denied", gate_code=gate.code, rationale=decision.rationale,
+                        detail=gate.reason)
+                continue
+            used += 1
+            res = test_firebase_rtdb_read(
+                FirebaseReadArgs(base_url=fb_url, path=path), scope, resolver=resolver)
+            verdict = verify_firebase_read(res)
+            prior[-1] += f" -> {verdict.outcome}"
+            execution = _record(session, assessment_id, step, decision.action, decision.arguments,
+                                "ok", outcome=verdict.outcome, rationale=decision.rationale,
+                                detail=verdict.rationale)
+            if verdict.is_finding:
+                findings += 1
+                _create_firebase_finding(session, assessment_id, execution.id, fb_url, path,
+                                         res.evidence)
+            if used >= scope.max_active_requests:
+                stop_reason = "budget_exhausted"
+                break
             continue
 
         # --- active checks on a table: anonymous read (Check B) or tenant isolation (Check C) ---
@@ -307,6 +356,25 @@ def _create_cross_tenant_finding(session: Session, assessment_id: str, execution
         remediation=(
             f"Add a Row Level Security policy on '{table}' that scopes rows to the caller's "
             "tenant (e.g. tenant_id = the JWT tenant claim); re-test with multiple tenants."
+        ),
+        evidence_json=json.dumps(evidence),
+    ))
+
+
+def _create_firebase_finding(session: Session, assessment_id: str, execution_id: str,
+                             base_url: str, path: str, evidence: dict) -> None:
+    session.add(Finding(
+        assessment_id=assessment_id, execution_id=execution_id,
+        title=f"Firebase Realtime Database readable without authentication ({path})",
+        severity="high", status="confirmed", confidence="high", evidence_quality="strong",
+        affected_resource=f"{base_url.rstrip('/')}{'' if path == '/' else '/' + path.strip('/')}",
+        impact=(
+            "The Firebase Realtime Database returned data to an unauthenticated request, so "
+            "its read rules are open — anyone can read this data."
+        ),
+        remediation=(
+            "Set Realtime Database security rules to deny public reads (e.g. \".read\": "
+            "\"auth != null\" or stricter per-path rules); re-test unauthenticated access."
         ),
         evidence_json=json.dumps(evidence),
     ))

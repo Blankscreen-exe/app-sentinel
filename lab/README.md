@@ -44,3 +44,16 @@ curl -s "http://127.0.0.1:3001/trips?select=origin" -H "apikey: $A" -H "Authoriz
 `python3 build_sample_apk.py sample-lab-app.apk` builds a synthetic APK whose embedded
 config points at the lab (URL + anon key + `from("trips"/"invoices"/"profiles")`). Upload
 it to the platform to drive an end-to-end assessment.
+
+
+## Firebase RTDB lab
+
+A mock Firebase Realtime Database for the Firebase open-rules check (faithful to the RTDB
+`GET /<path>.json` REST contract; synthetic data). Started with the lab stack on
+`127.0.0.1:9000`.
+
+```bash
+./firebase-mode.sh broken    # open read rules (leaks)
+./firebase-mode.sh correct   # locked rules (Permission denied)
+curl -s http://127.0.0.1:9000/users.json
+```

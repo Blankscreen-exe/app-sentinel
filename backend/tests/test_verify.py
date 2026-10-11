@@ -57,3 +57,24 @@ def test_tool_failure_not_finding() -> None:
     r = ToolResult(ok=False, tool="t", error_category="tool_failure", signal={"error": "boom"})
     v = verify_anonymous_read(r)
     assert v.outcome == "tool_failure" and not v.is_finding
+
+
+from app.verify import verify_firebase_read
+
+
+def test_firebase_open_read_is_finding() -> None:
+    r = _ok(http_status=200, denied=False, has_data=True)
+    v = verify_firebase_read(r)
+    assert v.outcome == "firebase_open_read" and v.is_finding
+
+
+def test_firebase_denied_not_finding() -> None:
+    r = _ok(http_status=401, denied=True, has_data=False)
+    v = verify_firebase_read(r)
+    assert v.outcome == "access_denied" and not v.is_finding
+
+
+def test_firebase_empty_not_finding() -> None:
+    r = _ok(http_status=200, denied=False, has_data=False)
+    v = verify_firebase_read(r)
+    assert v.outcome == "empty" and not v.is_finding

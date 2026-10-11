@@ -167,3 +167,45 @@ def review_rls_configuration(admin_dsn: str, tables: list[str]) -> ToolResult:
     except Exception as exc:  # noqa: BLE001
         return ToolResult(ok=False, tool="review_rls_configuration",
                           error_category="tool_failure", signal={"error": str(exc)[:200]})
+
+
+@dataclass
+class FirebaseReadArgs:
+    base_url: str          # e.g. https://proj.firebaseio.com  (or the lab mock)
+    path: str = "/"        # RTDB node path to probe
+
+
+def test_firebase_rtdb_read(
+    args: FirebaseReadArgs,
+    scope: ScopeConfig,
+    *,
+    resolver: Resolver = default_resolver,
+) -> ToolResult:
+    """Check whether a Firebase Realtime Database node is readable without authentication,
+    using the real RTDB REST contract: GET <base>/<path>.json. Minimal, read-only."""
+    node = args.path.strip("/")
+    suffix = f"/{node}.json" if node else "/.json"
+    url = f"{args.base_url.rstrip('/')}{suffix}?shallow=true"
+    out = safe_get(url, scope, resolver=resolver)
+    if not out.ok:
+        category = "network_error" if (out.error or "").startswith("network") else "tool_failure"
+        return ToolResult(ok=False, tool="test_firebase_rtdb_read",
+                          error_category=category, signal={"error": out.error})
+
+    parsed: Any = None
+    try:
+        parsed = json.loads(out.body_text or "null")
+    except json.JSONDecodeError:
+        parsed = None
+    # RTDB denies with HTTP 401/403 and {"error": "Permission denied"}. Only treat a
+    # permission error as "denied" — a 404/other error is not evidence of locked rules.
+    err = parsed.get("error") if isinstance(parsed, dict) else None
+    denied = out.status in (401, 403) or (err is not None and "permission" in str(err).lower())
+    has_data = parsed is not None and not (isinstance(parsed, dict) and "error" in parsed)
+    keys = sorted(parsed.keys()) if isinstance(parsed, dict) and "error" not in parsed else []
+    return ToolResult(
+        ok=True, tool="test_firebase_rtdb_read",
+        signal={"http_status": out.status, "denied": denied, "has_data": has_data},
+        evidence={"request": {"path": args.path, "anonymous": True, "shallow": True},
+                  "response_status": out.status, "top_level_keys": keys},
+    )

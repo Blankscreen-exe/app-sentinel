@@ -15,6 +15,7 @@ from app.tools.base import ToolResult
 
 Outcome = Literal[
     "unauthorized_access",   # anon got rows that should be restricted -> a real finding
+    "firebase_open_read",    # Firebase RTDB node readable without auth -> a real finding
     "cross_tenant_access",   # authenticated user saw another tenant's rows -> a real finding
     "tenant_isolated",       # authenticated user saw only their own tenant -> no finding
     "access_denied",         # backend refused (401/403/empty due to RLS) -> no finding
@@ -93,3 +94,21 @@ def verify_tenant_isolation(result: ToolResult) -> Verdict:
         return Verdict("tenant_isolated",
                        "authenticated user saw only their own tenant's rows", False)
     return Verdict("inconclusive", f"unclassified response (HTTP {status})", False)
+
+
+def verify_firebase_read(result: ToolResult) -> Verdict:
+    """Classify a Firebase RTDB anonymous-read check."""
+    if not result.ok:
+        cat = result.error_category or "tool_failure"
+        if cat == "network_error":
+            return Verdict("network_error", "could not reach the database", False)
+        return Verdict("tool_failure", f"tool failed: {result.signal.get('error')}", False)
+    if result.signal.get("denied"):
+        return Verdict("access_denied",
+                       f"database denied anonymous read (HTTP {result.signal.get('http_status')})",
+                       False)
+    if result.signal.get("has_data"):
+        return Verdict("firebase_open_read",
+                       "Firebase Realtime Database returned data to an unauthenticated request "
+                       "— read rules are open", True)
+    return Verdict("empty", "reachable but returned no data — inconclusive", False)

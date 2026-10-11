@@ -25,6 +25,9 @@ _MAX_BYTES_PER_ENTRY = 5 * 1024 * 1024  # skip huge blobs
 _MAX_FINDINGS = 2000
 
 _SUPABASE_URL = re.compile(r"https://[a-z0-9-]+\.supabase\.(?:co|in)", re.I)
+_FIREBASE_DB = re.compile(
+    r"https://[a-z0-9.-]+\.(?:firebaseio\.com|firebasedatabase\.app)", re.I
+)
 _URL = re.compile(r"https?://[^\s\"'<>()]+", re.I)
 _SB_PUBLISHABLE = re.compile(r"sb_publishable_[A-Za-z0-9]{8,}")
 _SB_SECRET = re.compile(r"sb_secret_[A-Za-z0-9]{8,}")
@@ -150,9 +153,13 @@ def _scan_text(entry: str, text: str, add: Any) -> None:
             add(_finding("endpoint", m.group(0), entry, lineno,
                          detail="Supabase project URL", confidence="high",
                          needs_runtime_validation=True))
+        for m in _FIREBASE_DB.finditer(line):
+            add(_finding("firebase_db", m.group(0), entry, lineno,
+                         detail="Firebase Realtime Database URL", confidence="high",
+                         needs_runtime_validation=True))
         for m in _URL.finditer(line):
             url = m.group(0).rstrip('",;)')
-            if _SUPABASE_URL.match(url):
+            if _SUPABASE_URL.match(url) or _FIREBASE_DB.match(url):
                 continue
             if any(ig in url for ig in _URL_IGNORE):
                 continue

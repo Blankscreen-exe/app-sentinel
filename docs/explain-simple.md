@@ -568,3 +568,25 @@ compiled apps, not just web-tech ones.
 
 (Note: the active *testing* modules still only understand Supabase backends — that's a
 separate expansion. JADX widened what we can *see* inside any app.)
+
+---
+
+## Expansion 2 — A Firebase check (done)
+
+Until now the only backend the agent could actively *test* was Supabase. This adds a
+second: **Firebase Realtime Database**, the most common Firebase security slip —
+a database whose read rules are left open so anyone can read it.
+
+The check speaks Firebase's **real** protocol (a plain web request to `/<path>.json`), so
+it works against actual Firebase — and it's offered only when the app actually references a
+Firebase database *and* you've authorized that host. The verdict is plain code: data came
+back unauthenticated → **open database** (a finding); "Permission denied" → fine.
+
+To test it with known answers (like the Supabase lab), there's a small **mock Firebase**
+with two modes — open rules and locked rules. Live-verified: open → a high-severity
+finding, locked → nothing.
+
+**The pattern that matters:** adding Firebase was *adding a module* — a detector, a tool,
+a verifier rule, a lab — with **no change to the agent, the scope gate, or the verifier
+framework**. That's the whole point of the architecture: new backends plug in; the brain
+and the guardrails stay the same.
