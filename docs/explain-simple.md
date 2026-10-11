@@ -590,3 +590,23 @@ finding, locked → nothing.
 a verifier rule, a lab — with **no change to the agent, the scope gate, or the verifier
 framework**. That's the whole point of the architecture: new backends plug in; the brain
 and the guardrails stay the same.
+
+---
+
+## Expansion 3 — A generic REST check (done)
+
+This one reaches the widest: most apps talk to *some* web API, not just Supabase or
+Firebase. The check asks a discovered endpoint for data **without logging in** and sees
+what comes back.
+
+The crucial difference from the other checks: with Supabase/Firebase we *know* the rules,
+so we can **confirm** a leak. With a plain API we **can't** — a 200 response doesn't prove
+the data was supposed to be private (it might be a public `/health` or a marketing page).
+So this check is deliberately humble: a data response is reported as a **candidate for
+human review**, marked low-confidence, not a confirmed vulnerability. An endpoint that
+properly demands a login is a clean pass.
+
+Lab-verified with a mock API that has a sensitive endpoint (open in broken mode, locked in
+correct) plus a legitimately public `/health`: broken → one candidate flagged, correct →
+nothing. Being honest about what it *can't* conclude is the point — it surfaces leads for a
+human, rather than crying wolf.

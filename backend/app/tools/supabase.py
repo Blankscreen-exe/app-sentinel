@@ -209,3 +209,40 @@ def test_firebase_rtdb_read(
         evidence={"request": {"path": args.path, "anonymous": True, "shallow": True},
                   "response_status": out.status, "top_level_keys": keys},
     )
+
+
+@dataclass
+class RestProbeArgs:
+    url: str               # a discovered endpoint URL to probe unauthenticated
+
+
+def test_unauthenticated_endpoint(
+    args: RestProbeArgs,
+    scope: ScopeConfig,
+    *,
+    resolver: Resolver = default_resolver,
+) -> ToolResult:
+    """Generic check: does an endpoint return structured data to an unauthenticated GET?
+    A 200 cannot prove the data *should* be private, so the verifier treats a hit as a
+    CANDIDATE for human review, never a confirmed vulnerability."""
+    out = safe_get(args.url, scope, resolver=resolver)
+    if not out.ok:
+        category = "network_error" if (out.error or "").startswith("network") else "tool_failure"
+        return ToolResult(ok=False, tool="test_unauthenticated_endpoint",
+                          error_category=category, signal={"error": out.error})
+    body = out.body_text or ""
+    parsed: Any = None
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError:
+        parsed = None
+    is_json = parsed is not None
+    has_payload = (isinstance(parsed, list) and len(parsed) > 0) or (
+        isinstance(parsed, dict) and bool(parsed) and "error" not in parsed
+    )
+    return ToolResult(
+        ok=True, tool="test_unauthenticated_endpoint",
+        signal={"http_status": out.status, "is_json": is_json, "has_payload": has_payload},
+        evidence={"request": {"url": args.url, "anonymous": True},
+                  "response_status": out.status, "json": is_json, "bytes": len(body)},
+    )

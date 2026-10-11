@@ -26,13 +26,20 @@ from app.tools.supabase import (
     AnonReadArgs,
     AuthReadArgs,
     FirebaseReadArgs,
+    RestProbeArgs,
     classify_client_key,
     review_rls_configuration,
     test_authenticated_tenant_isolation,
     test_firebase_rtdb_read,
     test_scoped_anonymous_read,
+    test_unauthenticated_endpoint,
 )
-from app.verify import verify_anonymous_read, verify_firebase_read, verify_tenant_isolation
+from app.verify import (
+    verify_anonymous_read,
+    verify_firebase_read,
+    verify_tenant_isolation,
+    verify_unauthenticated_endpoint,
+)
 
 logger = logging.getLogger("agent")
 
@@ -41,6 +48,8 @@ _BASE_TOOLS = ["classify_client_key", "test_scoped_anonymous_read"]
 
 def _available_tools(scope: ScopeConfig, resources: list[AttackSurfaceResource]) -> list[str]:
     tools = list(_BASE_TOOLS)
+    if any(r.resource_type == "endpoint" for r in resources):
+        tools.append("test_unauthenticated_endpoint")  # generic REST check
     if any(r.resource_type == "firebase_db" for r in resources):
         tools.append("test_firebase_rtdb_read")  # Firebase RTDB open-rules check
     if scope.authenticated_test_accounts:
@@ -85,6 +94,12 @@ def _build_state(scope: ScopeConfig, resources: list[AttackSurfaceResource],
             "arguments": {"base_url": "one of discovered_endpoints", "table": "one of discovered_tables"},
             "note": "reads a table as an authorized authenticated test user and checks whether "
                     "other tenants' rows are visible (cross-tenant isolation). Account supplied automatically.",
+        }
+    if any(r.resource_type == "endpoint" for r in resources):
+        tool_specs["test_unauthenticated_endpoint"] = {
+            "arguments": {"url": "one of discovered_endpoints (verbatim)"},
+            "note": "GETs an endpoint with no auth; a data response is a CANDIDATE (may be "
+                    "intentionally public) — not a confirmed finding",
         }
     if any(r.resource_type == "firebase_db" for r in resources):
         tool_specs["test_firebase_rtdb_read"] = {
@@ -208,6 +223,42 @@ def run_assessment_loop(
                     if info.get("rls_enabled") is False:
                         findings += 1
                         _create_rls_finding(session, assessment_id, execution.id, tname, info)
+            continue
+
+        # --- test_unauthenticated_endpoint: generic REST, active, gated, verified ---
+        if decision.action == "test_unauthenticated_endpoint":
+            url = decision.arguments.get("url") or ""
+            # Ground to a discovered endpoint (the LLM must not invent a URL).
+            if url not in endpoints:
+                match = next((e for e in endpoints
+                              if urlparse(e).hostname and urlparse(e).hostname == urlparse(url).hostname),
+                             endpoints[0] if endpoints else url)
+                url = match
+            ep_action = ProposedAction(
+                tool=decision.action, is_active_network=True,
+                target_url=url, target_host=urlparse(url).hostname, method="GET",
+            )
+            gate = evaluate(ep_action, scope, active_requests_used=used, resolver=resolver)
+            if not gate.allowed:
+                prior[-1] += f" -> blocked ({gate.code})"
+                _record(session, assessment_id, step, decision.action, decision.arguments,
+                        "gate_denied", gate_code=gate.code, rationale=decision.rationale,
+                        detail=gate.reason)
+                continue
+            used += 1
+            res = test_unauthenticated_endpoint(RestProbeArgs(url=url), scope, resolver=resolver)
+            verdict = verify_unauthenticated_endpoint(res)
+            prior[-1] += f" -> {verdict.outcome}"
+            execution = _record(session, assessment_id, step, decision.action, decision.arguments,
+                                "ok", outcome=verdict.outcome, rationale=decision.rationale,
+                                detail=verdict.rationale)
+            if verdict.is_finding:
+                findings += 1
+                _create_endpoint_candidate_finding(session, assessment_id, execution.id, url,
+                                                    res.evidence)
+            if used >= scope.max_active_requests:
+                stop_reason = "budget_exhausted"
+                break
             continue
 
         # --- test_firebase_rtdb_read: active, gated, verified ---
@@ -356,6 +407,28 @@ def _create_cross_tenant_finding(session: Session, assessment_id: str, execution
         remediation=(
             f"Add a Row Level Security policy on '{table}' that scopes rows to the caller's "
             "tenant (e.g. tenant_id = the JWT tenant claim); re-test with multiple tenants."
+        ),
+        evidence_json=json.dumps(evidence),
+    ))
+
+
+def _create_endpoint_candidate_finding(session: Session, assessment_id: str, execution_id: str,
+                                        url: str, evidence: dict) -> None:
+    # Deliberately a CANDIDATE, not confirmed: a 200 does not prove the data should be
+    # private. Flags it for human review rather than asserting a vulnerability.
+    session.add(Finding(
+        assessment_id=assessment_id, execution_id=execution_id,
+        title=f"Endpoint returns data without authentication: {url}",
+        severity="medium", status="candidate", confidence="low", evidence_quality="moderate",
+        affected_resource=url,
+        impact=(
+            "An unauthenticated GET returned structured data. This MAY be a broken-access-"
+            "control issue, or the endpoint may be intentionally public — it requires human "
+            "judgement to decide."
+        ),
+        remediation=(
+            "Confirm whether this endpoint should require authentication; if so, enforce auth "
+            "and re-test. If it is intentionally public, record it as accepted."
         ),
         evidence_json=json.dumps(evidence),
     ))

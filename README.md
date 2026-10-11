@@ -41,6 +41,8 @@ The agent reaches the backend only through **registered tools** with hard limits
 - **Check C — authenticated cross-tenant**: can a logged-in user read another tenant's rows?
 - **Check D — admin RLS review**: with authorized admin access, is Row Level Security on?
 - **Firebase — open-rules read**: is a Firebase Realtime Database node readable without auth?
+- **Generic REST — unauthenticated read**: does an endpoint return data without auth? (reported
+  as a *candidate* for human review — a 200 cannot prove the data should be private)
 
 Backends without an installed module are mapped but honestly reported as **not assessed**.
 
@@ -147,7 +149,7 @@ lab/agent integration checks in `backend/tests/live_*.py`.
 ## Limitations (deliberate, for this prototype)
 
 - Local single-operator; not multi-user or internet-exposed as-is.
-- Android APKs only; backend modules cover Supabase/PostgREST and Firebase RTDB.
+- Android APKs only; backend modules cover Supabase/PostgREST, Firebase RTDB, and generic REST.
 - JADX decompiles compiled DEX so real Kotlin/Java apps yield code-level findings
   (bounded by a timeout; large apps scan partial output). Active-check modules still
   cover Supabase only.

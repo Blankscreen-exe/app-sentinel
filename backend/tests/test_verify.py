@@ -78,3 +78,21 @@ def test_firebase_empty_not_finding() -> None:
     r = _ok(http_status=200, denied=False, has_data=False)
     v = verify_firebase_read(r)
     assert v.outcome == "empty" and not v.is_finding
+
+
+from app.verify import verify_unauthenticated_endpoint
+
+
+def test_generic_endpoint_data_is_candidate_finding() -> None:
+    v = verify_unauthenticated_endpoint(_ok(http_status=200, is_json=True, has_payload=True))
+    assert v.outcome == "unauthenticated_endpoint_data" and v.is_finding
+
+
+def test_generic_endpoint_auth_required_not_finding() -> None:
+    v = verify_unauthenticated_endpoint(_ok(http_status=401, is_json=True, has_payload=False))
+    assert v.outcome == "endpoint_requires_auth" and not v.is_finding
+
+
+def test_generic_endpoint_no_payload_inconclusive() -> None:
+    v = verify_unauthenticated_endpoint(_ok(http_status=200, is_json=False, has_payload=False))
+    assert v.outcome == "inconclusive" and not v.is_finding

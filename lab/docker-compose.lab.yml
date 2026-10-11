@@ -30,6 +30,15 @@ services:
       - "127.0.0.1:9000:9000"
     networks: [lab-net]
 
+  restapi-lab:
+    image: python:3.12-slim
+    command: ["python", "/app/server.py"]
+    volumes:
+      - ./restapi/server.py:/app/server.py:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks: [lab-net]
+
   lab-rest:
     image: postgrest/postgrest:v12.2.3
     environment:

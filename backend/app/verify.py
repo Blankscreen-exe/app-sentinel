@@ -18,6 +18,8 @@ Outcome = Literal[
     "firebase_open_read",    # Firebase RTDB node readable without auth -> a real finding
     "cross_tenant_access",   # authenticated user saw another tenant's rows -> a real finding
     "tenant_isolated",       # authenticated user saw only their own tenant -> no finding
+    "unauthenticated_endpoint_data",  # generic endpoint returned data to anon -> CANDIDATE
+    "endpoint_requires_auth",          # generic endpoint required auth -> no finding
     "access_denied",         # backend refused (401/403/empty due to RLS) -> no finding
     "empty",                 # reachable, authorized, but no rows -> inconclusive
     "network_error",
@@ -112,3 +114,23 @@ def verify_firebase_read(result: ToolResult) -> Verdict:
                        "Firebase Realtime Database returned data to an unauthenticated request "
                        "— read rules are open", True)
     return Verdict("empty", "reachable but returned no data — inconclusive", False)
+
+
+def verify_unauthenticated_endpoint(result: ToolResult) -> Verdict:
+    """Classify a generic unauthenticated-endpoint probe. A 200 with data is a CANDIDATE
+    (we cannot know it should be private); auth-required is a clean negative."""
+    if not result.ok:
+        cat = result.error_category or "tool_failure"
+        if cat == "network_error":
+            return Verdict("network_error", "could not reach the endpoint", False)
+        return Verdict("tool_failure", f"tool failed: {result.signal.get('error')}", False)
+    status = result.signal.get("http_status")
+    if status in (401, 403):
+        return Verdict("endpoint_requires_auth",
+                       f"endpoint required authentication (HTTP {status})", False)
+    if status == 200 and result.signal.get("has_payload"):
+        # is_finding=True but the loop records this as a CANDIDATE, not confirmed.
+        return Verdict("unauthenticated_endpoint_data",
+                       "endpoint returned structured data to an unauthenticated request — "
+                       "CANDIDATE; may be intentionally public, needs human review", True)
+    return Verdict("inconclusive", f"no clear data exposure (HTTP {status})", False)

@@ -240,6 +240,14 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
 - ✅ Mock Firebase RTDB lab (`lab/firebase/`, broken/correct via `firebase-mode.sh`).
   Live-verified both modes: broken → open-read finding, correct → none. 40 unit tests.
 
+### Generic REST check module ✅ (verified 2026-10-11)
+- ✅ `test_unauthenticated_endpoint` GETs a discovered endpoint with no auth; verifier
+  `verify_unauthenticated_endpoint`. A data response is a **candidate** (status=candidate,
+  low confidence) — a 200 cannot prove the data should be private; auth-required is a clean
+  negative. Offered when an `endpoint` resource is present and the host is authorized.
+- ✅ Mock REST lab (`lab/restapi/`, broken/correct via `rest-mode.sh`) with a sensitive
+  endpoint + legitimately-public /health and /. Live-verified both modes. 43 unit tests.
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.
