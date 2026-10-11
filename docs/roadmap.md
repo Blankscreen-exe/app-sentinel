@@ -120,10 +120,16 @@ issue while refusing to over-claim.
   default-deny, host/resource authorization, lab exception, scheme, budget, method,
   approval. No LLM involved — the control plane is testable on its own.
 
-### 3c. LLM gateway (ADR-002, ADR-003)
-- ⬜ `llm-gateway` container: Claude CLI, tools hardcoded off, schema-validated JSON out,
-  usage/cost logging, concurrency cap + timeout.
-- ⬜ Provider-independent client in the worker; versioned prompts + Pydantic schemas.
+### 3c. LLM gateway (ADR-002/003/015) ✅ (slice 3.4, verified 2026-10-11)
+- ✅ `llm-gateway` container: Claude CLI, tool-disabling flags hardcoded, empty workdir,
+  schema-validated JSON out, usage/cost logging, concurrency cap + timeout, clean error
+  envelope. Verified mechanically (health, command build, error handling).
+- ✅ Provider-independent client in the backend (`GatewayLLMClient` + `StubLLMClient`),
+  versioned planner prompt + Pydantic `AgentDecision` schema (action enum constrained to
+  registered tools + 'stop'). 3 LLM unit tests (37 total).
+- ⏳ Real in-container Claude decisions require a one-time credential (`claude setup-token`
+  → `.env`, or `ANTHROPIC_API_KEY`); headless Claude itself was validated in Spike 001.
+  Default `LLM_MODE=stub/disabled` keeps everything runnable without credentials.
 
 ### 3c-tools. Registered tools + Supabase checks + verifier ✅ (slice 3.3, verified 2026-10-11)
 - ✅ Tool registry + normalized `ToolResult` (no raw terminal output).

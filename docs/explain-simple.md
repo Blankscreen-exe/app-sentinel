@@ -340,3 +340,35 @@ response is.** A tool failing is not a finding. An empty result is not a finding
 That is the entire thesis of the project working end-to-end — and there is still **no AI
 in the loop**. The AI only arrives next, to *suggest* which of these checks to run.
 34 automated tests plus the live lab check, all green.
+
+---
+
+## Step 3, slice 4 — The advisor's booth (the "LLM gateway") (done)
+
+**What this slice does:** builds the one room where the AI (Claude) lives, and the
+intercom for talking to it. You slide a question under the door; it slides back a
+structured answer. It can only talk — every one of its own tools is switched off, and it
+runs in an empty room, so even a booby-trapped question can't make it touch anything.
+
+The booth takes a request shaped like *{the rules, the question, the exact answer
+format}* and returns a JSON answer that must match that format. It also reports how much
+the call cost and how long it took, but it **never logs the question's contents**.
+
+On our side (outside the booth) there are two ways to "ask":
+- the **real booth** (talks to Claude), and
+- a **stand-in** (a scripted fake answer) we use for testing, so we can run the whole
+  machine without spending anything or needing a connection.
+
+**One honest wrinkle, and how I handled it.** Claude needs to prove who it is (a login).
+On your laptop that login lives in your system **keyring**, not in a plain file — so
+simply sharing the folder with the booth didn't carry the login across, and the booth
+got "please log in." I built the booth to accept a login the proper way instead: you run
+one command (`claude setup-token`) once and drop the result into the private settings
+file, and it's injected into *only* the booth at runtime (never baked into anything,
+exactly like the API-key discussion we had). Until you do that, the machine simply runs
+in "stand-in" mode — which is enough to prove everything else works.
+
+So: the booth is built and its plumbing is verified (it starts, takes requests, enforces
+its limits, handles errors cleanly). Talking to the *real* Claude inside it needs your
+one-time login — and we already proved real Claude works headless back in the first
+experiment. 37 automated tests pass.

@@ -1,15 +1,24 @@
-# LLM gateway (placeholder for the foundation).
-# Real Claude CLI wrapping (tools disabled, schema-validated JSON out) arrives in
-# step 3. This process only answers a health ping so compose wiring is verifiable.
-# It is the only service that will hold the Claude credential (ADR-003); none yet.
-FROM python:3.12-slim
+# LLM gateway (ADR-002/003/015): wraps the Claude CLI as prompt-in / JSON-out.
+# The only credential-holding component. Credentials are injected at RUNTIME
+# (mounted ~/.claude or an API key / secret), never baked into this image.
+FROM node:20-bookworm-slim
 
-ENV PYTHONUNBUFFERED=1
+# Python (stdlib only) runs the small HTTP server; Node runs the Claude CLI.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Claude Code CLI. Pinned for reproducibility; update deliberately (ADR-003).
+RUN npm install -g @anthropic-ai/claude-code@2.1.28 || npm install -g @anthropic-ai/claude-code
+
+ENV PYTHONUNBUFFERED=1 \
+    CLAUDE_CONFIG_DIR=/home/node/.claude
 WORKDIR /srv
-COPY main.py .
+COPY server.py entrypoint.sh ./
 
-RUN useradd --create-home --uid 1000 gatewayuser
-USER gatewayuser
+# The node:20 image already ships a non-root `node` user at uid 1000, which matches the
+# host operator so a mounted ~/.claude seed is readable. Reuse it rather than creating one.
+USER node
 
 EXPOSE 9000
-CMD ["python", "main.py"]
+CMD ["bash", "entrypoint.sh"]

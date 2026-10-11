@@ -74,6 +74,8 @@ services:
       SANDBOX_DATABASE_URL: postgresql://sandbox:${SANDBOX_DB_PASSWORD:-sandbox}@sandbox-db:5432/sandbox
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATA_DIR: /data
+      LLM_MODE: ${LLM_MODE:-disabled}
+      LLM_GATEWAY_URL: http://llm-gateway:9000
     volumes:
       - ./data:/data
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
@@ -101,6 +103,23 @@ services:
 
   llm-gateway:
     build: ./llm-gateway
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-sonnet}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-90}
+      LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-1}
+      # Credentials injected at runtime (ADR-015), gateway ONLY. Supply ONE of:
+      #   CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`), or ANTHROPIC_API_KEY,
+      #   or mount ~/.claude via HOST_CLAUDE_DIR (works only if creds live in that dir).
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Point the CLI at the mounted credentials (local personal use, ADR-015).
+    volumes:
+      # Credentials injected at runtime into the gateway ONLY (never baked in, never
+      # in the APK sandbox). Read-only. HOST_CLAUDE_DIR must be an absolute path in .env.
+      # For an API key instead, drop this and pass the key via a git-ignored env /
+      # Docker secret (ADR-015).
+      - ${HOST_CLAUDE_DIR:-/nonexistent}:/seed/.claude:ro
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     networks: [main-net]
 
 volumes:
