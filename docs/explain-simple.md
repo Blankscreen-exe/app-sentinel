@@ -482,3 +482,24 @@ with its impact, how to reproduce it, and how to fix it, plus a **coverage** sec
 number would be dishonest) and states outright that no findings doesn't mean secure.
 
 Verified: JSON, HTML, and a real PDF all generate from the live Claude-driven assessment.
+
+---
+
+## Post-MVP 2 — Grading the tool (done)
+
+**What this adds:** a way to measure whether the tool is actually *right*, not just busy.
+It runs the agent against the lab in both modes (where we know the correct answers ahead
+of time) and scores it like an exam:
+- **precision** — of the things it flagged, how many were real? (no false alarms)
+- **recall** — of the real problems, how many did it catch? (no misses)
+
+**Latest score: a perfect 1.00 on both**, with zero false alarms and zero misses across
+all eight test cases. The locked `profiles` table and the non-existent `receipts` table
+were both correctly left alone; `trips` and `invoices` were caught in broken mode and
+correctly cleared in correct mode.
+
+**Honest caveat (and a good thing to say out loud):** this is a *small* known-answer lab
+(four tables, two modes). A perfect score here means the detection logic is sound on the
+cases we designed — not that it's magically accurate on any app in the world. Measuring a
+security tool against known answers, and being upfront about the test's size, is exactly
+the discipline the project is about.

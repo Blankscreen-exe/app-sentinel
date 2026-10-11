@@ -205,6 +205,12 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
   assessment page. Executive summary, findings (evidence + reproduction + remediation),
   coverage (completed / blocked / failed / inconclusive, tables assessed vs not), limitations.
 
+### Evaluation metrics ✅ (verified 2026-10-11)
+- ✅ `eval/run_eval.py`: runs the agent over both lab modes, compares flagged tables to
+  ground truth, reports precision / recall / FPR / F1. Latest: **1.00 / 1.00 / 0.00 / 1.00**
+  (2 TP, 6 TN, 0 FP, 0 FN). Honest caveat: small known-answer set, validates the control
+  plane, not general accuracy.
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.
