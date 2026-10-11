@@ -111,9 +111,14 @@ issue while refusing to over-claim.
 - ✅ Sample APK (`build_sample_apk.py`) embedding the lab URL + anon JWT + table refs;
   verified the scanner extracts them.
 
-### 3b. Attack-surface model
-- ⬜ Resource/technology/relationship entities with provenance and confidence.
-- ⬜ Discovered resources start **unapproved**; distinguish discovered/inferred/verified.
+### 3b. Attack-surface model + scope gate ✅ (slice 3.2, verified 2026-10-11)
+- ✅ `AttackSurfaceResource` (migration 0003) built from discoveries with provenance;
+  every resource starts **unapproved**, state `discovered`. Build is idempotent.
+- ✅ `ScopeConfig` (authoritative, operator-set, default-deny for active testing).
+- ✅ Deterministic **scope gate** + **network guard** (SSRF/DNS-rebinding: refuses
+  private/loopback/reserved IPs unless an authorized lab target). 12 unit tests cover
+  default-deny, host/resource authorization, lab exception, scheme, budget, method,
+  approval. No LLM involved — the control plane is testable on its own.
 
 ### 3c. LLM gateway (ADR-002, ADR-003)
 - ⬜ `llm-gateway` container: Claude CLI, tools hardcoded off, schema-validated JSON out,

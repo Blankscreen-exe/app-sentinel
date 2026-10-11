@@ -261,3 +261,41 @@ confirmed our scanner pulls them out.
 **One choice I made for your safety:** the lab uses a made-up schema, not your client's
 real one, so the public repo never contains the client's design. The client app stays a
 private test target only.
+
+---
+
+## Step 3, slice 2 — The rulebook (the "scope gate") (done)
+
+**What this slice does:** builds the part that decides **what the tool is allowed to do** —
+and it's deliberately plain, boring code with *no AI in it*. This is the heart of the
+whole "the advisor suggests, the code decides" idea.
+
+Two pieces:
+
+**1. The map of what the app talks to (the "attack surface").** We take the leads from
+step 2 (endpoints, keys, tables, buckets) and turn them into a tidy list of **resources**.
+Every one starts marked **unapproved**. That's the key rule: *finding something in the app
+does not give us permission to go poke it.* Permission is a separate, explicit decision.
+
+**2. The rulebook itself (the "scope gate").** Before any action that touches the network,
+it checks, in plain code:
+- Is active testing even switched on for this job? (Off by default.)
+- Is this exact target on the approved list?
+- Is the method safe (read-only)?
+- Is there budget left? (A hard cap on how many requests — ADR-011.)
+- Does this action need a human's sign-off first?
+
+And a **network safety guard** that stops a classic trick called **SSRF** (tricking a tool
+into calling a address it shouldn't). It looks up where the target address really points,
+and **refuses anything pointing at a private or internal machine** — *unless* you've
+explicitly said "this is my authorized local lab." That one exception is how we're allowed
+to test our own lab while staying safe everywhere else.
+
+**Why this is the important bit:** because the rulebook never reads the AI's opinion, the
+AI *cannot* talk its way past it — and neither can a booby-trapped instruction hidden in
+an app. If the AI ever says "go test that private server," the plain code says no.
+
+**How I proved it:** 12 focused tests, each one a rule: active-testing-off blocks
+everything; an un-approved address is refused; a private address is blocked by default but
+allowed once the lab is authorized; over-budget is refused; unsafe methods are refused;
+and so on. All green. No AI was involved in any of it — which is exactly the point.
