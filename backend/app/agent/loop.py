@@ -61,7 +61,19 @@ def _build_state(scope: ScopeConfig, resources: list[AttackSurfaceResource],
         "discovered_endpoints": ids("endpoint"),
         "discovered_tables": ids("table"),
         "discovered_keys_masked": [k[:12] + "…" for k in keys],
-        "available_tools": _TOOLS,
+        "available_tools": {
+            "classify_client_key": {
+                "arguments": {},
+                "note": "classifies the discovered client key offline; no arguments needed",
+            },
+            "test_scoped_anonymous_read": {
+                "arguments": {
+                    "base_url": "one of discovered_endpoints (verbatim)",
+                    "table": "one of discovered_tables (verbatim)",
+                },
+                "note": "anonymous read of ONE table; the client key is supplied automatically",
+            },
+        },
         "prior_steps": prior,
     }
 
@@ -85,6 +97,19 @@ def run_assessment_loop(
     # Real public key held out-of-band (never surfaced to the model in full).
     public_keys = [r.identifier for r in resources if r.resource_type == "key"]
     anon_key = public_keys[0] if public_keys else ""
+    endpoints = [r.identifier for r in resources if r.resource_type == "endpoint"]
+
+    def resolve_base_url(args: dict[str, Any]) -> str:
+        """Ground the endpoint in the DISCOVERED attack surface, tolerating arg variants.
+        The LLM must not invent a URL; we map its hint to a discovered endpoint."""
+        hint = args.get("base_url") or args.get("url") or args.get("host") or ""
+        for ep in endpoints:
+            if hint and (hint == ep or urlparse(ep).hostname == hint or hint in ep):
+                return ep
+        return endpoints[0] if endpoints else hint
+
+    def resolve_table(args: dict[str, Any]) -> str:
+        return args.get("table") or str(args.get("resource", "")).split(":")[-1]
 
     used = 0
     findings = 0
@@ -122,14 +147,16 @@ def run_assessment_loop(
         if decision.action == "classify_client_key":
             key = decision.arguments.get("key") or anon_key
             info = classify_client_key(key)
+            # Feed the observation back so the planner doesn't repeat the classification.
+            prior[-1] += f" -> {info['classification']}"
             _record(session, assessment_id, step, decision.action, decision.arguments, "ok",
                     outcome="classified", rationale=decision.rationale,
                     detail=json.dumps(info))
             continue
 
         # --- test_scoped_anonymous_read: active, gated, verified ---
-        base_url = decision.arguments.get("base_url", "")
-        table = decision.arguments.get("table", "")
+        base_url = resolve_base_url(decision.arguments)
+        table = resolve_table(decision.arguments)
         host = urlparse(base_url).hostname
         action = ProposedAction(
             tool=decision.action, is_active_network=True,
@@ -138,6 +165,7 @@ def run_assessment_loop(
         )
         gate = evaluate(action, scope, active_requests_used=used, resolver=resolver)
         if not gate.allowed:
+            prior[-1] += f" -> blocked ({gate.code})"
             _record(session, assessment_id, step, decision.action, decision.arguments,
                     "gate_denied", gate_code=gate.code, rationale=decision.rationale,
                     detail=gate.reason)
@@ -149,6 +177,7 @@ def run_assessment_loop(
             resolver=resolver,
         )
         verdict = verify_anonymous_read(res)
+        prior[-1] += f" -> {table}: {verdict.outcome}"
         execution = _record(
             session, assessment_id, step, decision.action, decision.arguments, "ok",
             outcome=verdict.outcome, rationale=decision.rationale,
