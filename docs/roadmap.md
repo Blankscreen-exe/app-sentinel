@@ -211,10 +211,23 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
   (2 TP, 6 TN, 0 FP, 0 FN). Honest caveat: small known-answer set, validates the control
   plane, not general accuracy.
 
+### Supabase Check C (authenticated) + Check D (admin review) ✅ (verified 2026-10-11)
+- ✅ Lab: authenticated JWTs carry a `tenant_id` claim; `correct` mode enforces
+  tenant-scoped RLS, `broken` leaks across tenants.
+- ✅ Check C `test_authenticated_tenant_isolation`: reads a table as an authorized test
+  account and flags **cross_tenant_access** when other tenants' rows are visible
+  (minimal evidence: tenant_id only). Verifier outcomes: cross_tenant_access /
+  tenant_isolated / access_denied.
+- ✅ Check D `review_rls_configuration`: with an authorized admin DSN, reviews
+  RLS-enabled + policy count per table (metadata only); flags RLS-disabled tables
+  (medium). Marked unavailable when no admin access is in scope.
+- ✅ Tools offered only when scope authorizes them (test accounts / admin DSN).
+  Live-verified both modes: broken → 3 findings (anon read, cross-tenant, RLS-disabled);
+  correct → none.
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.
-- ⏸️ Authenticated-user and admin-metadata Supabase checks (Checks C & D).
 - ⏸️ Recorded backup run for offline demo.
 - ⏸️ API-key LLM adapter / local-model adapter; dollar budget cap.
 - ⏸️ iOS/IPA support.

@@ -15,6 +15,8 @@ from app.tools.base import ToolResult
 
 Outcome = Literal[
     "unauthorized_access",   # anon got rows that should be restricted -> a real finding
+    "cross_tenant_access",   # authenticated user saw another tenant's rows -> a real finding
+    "tenant_isolated",       # authenticated user saw only their own tenant -> no finding
     "access_denied",         # backend refused (401/403/empty due to RLS) -> no finding
     "empty",                 # reachable, authorized, but no rows -> inconclusive
     "network_error",
@@ -65,4 +67,29 @@ def verify_anonymous_read(result: ToolResult) -> Verdict:
             False,
         )
 
+    return Verdict("inconclusive", f"unclassified response (HTTP {status})", False)
+
+
+def verify_tenant_isolation(result: ToolResult) -> Verdict:
+    """Classify an authenticated cross-tenant isolation check (Check C)."""
+    if not result.ok:
+        cat = result.error_category or "tool_failure"
+        if cat == "network_error":
+            return Verdict("network_error", "could not reach the endpoint", False)
+        return Verdict("tool_failure", f"tool failed: {result.signal.get('error')}", False)
+
+    status = result.signal.get("http_status")
+    pg_error = result.signal.get("pg_error_code")
+    if status in (401, 403) or pg_error is not None:
+        return Verdict("access_denied", f"backend denied the authenticated read (HTTP {status})", False)
+    if status == 200 and result.signal.get("is_list"):
+        foreign = result.signal.get("foreign_tenants", 0)
+        if foreign and foreign > 0:
+            return Verdict(
+                "cross_tenant_access",
+                f"authenticated user saw rows from {foreign} other tenant(s) — isolation failure",
+                True,
+            )
+        return Verdict("tenant_isolated",
+                       "authenticated user saw only their own tenant's rows", False)
     return Verdict("inconclusive", f"unclassified response (HTTP {status})", False)

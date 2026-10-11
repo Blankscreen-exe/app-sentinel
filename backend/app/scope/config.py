@@ -39,6 +39,11 @@ class ScopeConfig(BaseModel):
     # Hard ceiling on active requests for this assessment (ADR-011).
     max_active_requests: int = 30
 
+    # Check C: authorized authenticated test accounts, each {jwt, tenant_id, label}.
+    authenticated_test_accounts: list[dict[str, str]] = Field(default_factory=list)
+    # Check D: authorized admin DB access for metadata review (empty = not available).
+    admin_dsn: str = ""
+
     def resource_approved(self, resource_id: str | None) -> bool:
         return resource_id is not None and resource_id in self.authorized_resources
 

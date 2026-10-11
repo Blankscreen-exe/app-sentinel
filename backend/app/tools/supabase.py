@@ -94,3 +94,76 @@ def test_scoped_anonymous_read(
             "sample_columns": sample_shape,
         },
     )
+
+
+@dataclass
+class AuthReadArgs:
+    base_url: str
+    table: str
+    user_jwt: str          # an authenticated test account's JWT
+    own_tenant_id: str     # the tenant the test account belongs to
+
+
+def test_authenticated_tenant_isolation(
+    args: AuthReadArgs,
+    scope: ScopeConfig,
+    *,
+    resolver: Resolver = default_resolver,
+) -> ToolResult:
+    """Check C: as an authenticated test user, read a table and see whether rows from
+    OTHER tenants are returned (a cross-tenant isolation failure). Minimal: only the
+    tenant_id column is read."""
+    url = f"{args.base_url.rstrip('/')}/{args.table}?select=tenant_id&limit=10"
+    headers = {"apikey": args.user_jwt, "Authorization": f"Bearer {args.user_jwt}"}
+    out = safe_get(url, scope, headers=headers, resolver=resolver)
+    if not out.ok:
+        category = "network_error" if (out.error or "").startswith("network") else "tool_failure"
+        return ToolResult(ok=False, tool="test_authenticated_tenant_isolation",
+                          error_category=category, signal={"error": out.error})
+
+    parsed: Any = None
+    try:
+        parsed = json.loads(out.body_text or "")
+    except json.JSONDecodeError:
+        parsed = None
+    pg_error = parsed.get("code") if isinstance(parsed, dict) else None
+    tenants: list[str] = []
+    if isinstance(parsed, list):
+        tenants = sorted({str(r.get("tenant_id")) for r in parsed if isinstance(r, dict)})
+    foreign = [t for t in tenants if t and t != args.own_tenant_id]
+    return ToolResult(
+        ok=True, tool="test_authenticated_tenant_isolation",
+        signal={"http_status": out.status, "pg_error_code": pg_error,
+                "is_list": isinstance(parsed, list), "foreign_tenants": len(foreign)},
+        evidence={"request": {"table": args.table, "as_tenant": args.own_tenant_id,
+                              "authenticated": True},
+                  "response_status": out.status, "tenants_seen": tenants,
+                  "foreign_tenants_seen": foreign},
+    )
+
+
+def review_rls_configuration(admin_dsn: str, tables: list[str]) -> ToolResult:
+    """Check D: with authorized admin DB access, review RLS posture per table (metadata
+    only — reads pg_class.relrowsecurity and pg_policies). Not an exploit; a config review."""
+    import psycopg  # local import; only used when admin access is authorized
+
+    try:
+        rows: dict[str, Any] = {}
+        with psycopg.connect(admin_dsn, connect_timeout=5) as conn:
+            for t in tables:
+                enabled = conn.execute(
+                    "SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass(%s)", (f"public.{t}",)
+                ).fetchone()
+                pols = conn.execute(
+                    "SELECT polname FROM pg_policy p JOIN pg_class c ON p.polrelid=c.oid "
+                    "WHERE c.oid = to_regclass(%s)", (f"public.{t}",)
+                ).fetchall()
+                rows[t] = {
+                    "rls_enabled": bool(enabled[0]) if enabled else None,
+                    "policy_count": len(pols),
+                }
+        return ToolResult(ok=True, tool="review_rls_configuration",
+                          signal={"tables_reviewed": len(rows)}, evidence={"rls": rows})
+    except Exception as exc:  # noqa: BLE001
+        return ToolResult(ok=False, tool="review_rls_configuration",
+                          error_category="tool_failure", signal={"error": str(exc)[:200]})

@@ -503,3 +503,25 @@ correctly cleared in correct mode.
 cases we designed — not that it's magically accurate on any app in the world. Measuring a
 security tool against known answers, and being upfront about the test's size, is exactly
 the discipline the project is about.
+
+---
+
+## Post-MVP 3 — Logged-in and admin checks (done)
+
+So far the agent tested as an anonymous stranger. This adds two deeper checks:
+
+**Check C — "can a logged-in user see other customers' data?"** Using an authorized test
+account, the agent reads a table and looks at *whose* rows come back. If a user from
+Company A can see Company B's rows, that's a **cross-tenant leak** — one of the most
+serious SaaS bugs. (It only reads the tenant id, nothing sensitive.) In the lab's broken
+mode it correctly caught the leak; in correct mode (where each company is properly walled
+off) it correctly found nothing.
+
+**Check D — "what does the database's own rulebook say?"** When you provide authorized
+admin access, the agent reads the database's configuration directly — is row-level
+security switched on for each table, are there policies — and reports tables with it
+switched off. This is a configuration review, clearly labelled, and simply marked
+"not available" when no admin access is granted (we never assume it).
+
+Both are offered **only when you've authorized them** (a test account for C, admin access
+for D) — discovery never grants these; you opt in. Live-verified in both lab modes.
