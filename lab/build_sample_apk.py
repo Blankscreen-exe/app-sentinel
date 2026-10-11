@@ -20,16 +20,20 @@ from make_apk import build_apk  # noqa: E402
 
 from mint_anon_key import mint  # noqa: E402  (same dir)
 
-# In-cluster endpoint the containerized agent uses; the anon key mirrors a Supabase
-# legacy anon key (role-scoped JWT). Both are lab-only.
+# In-cluster endpoints the containerized agent uses; the anon key mirrors a Supabase
+# legacy anon key (role-scoped JWT). All lab-only. One app points at all three backends
+# so a single upload exercises every check module (Supabase, Firebase, generic REST).
 LAB_URL = "http://lab-rest:3000"
 LAB_ANON_KEY = mint("anon")
 LAB_TABLES = ("trips", "invoices", "profiles")
+LAB_FIREBASE = "http://firebase-lab:9000"
+LAB_REST = "http://restapi-lab:8080/api/orders"
 
 
 def main() -> None:
     out = sys.argv[1] if len(sys.argv) > 1 else "sample-lab-app.apk"
-    build_apk(out, supabase_url=LAB_URL, supabase_key=LAB_ANON_KEY, tables=LAB_TABLES)
+    build_apk(out, supabase_url=LAB_URL, supabase_key=LAB_ANON_KEY, tables=LAB_TABLES,
+              firebase_url=LAB_FIREBASE, rest_url=LAB_REST)
     print(out)
 
 

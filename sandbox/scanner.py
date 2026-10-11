@@ -25,8 +25,11 @@ _MAX_BYTES_PER_ENTRY = 5 * 1024 * 1024  # skip huge blobs
 _MAX_FINDINGS = 2000
 
 _SUPABASE_URL = re.compile(r"https://[a-z0-9-]+\.supabase\.(?:co|in)", re.I)
+# Firebase RTDB: the real domains, plus any host containing "firebase" (covers
+# self-hosted / emulator / lab hosts) so detection is not limited to the public domains.
 _FIREBASE_DB = re.compile(
-    r"https://[a-z0-9.-]+\.(?:firebaseio\.com|firebasedatabase\.app)", re.I
+    r"https?://[a-z0-9.-]*(?:firebaseio\.com|firebasedatabase\.app|firebase[a-z0-9.-]*)"
+    r"(?::\d+)?", re.I
 )
 _URL = re.compile(r"https?://[^\s\"'<>()]+", re.I)
 _SB_PUBLISHABLE = re.compile(r"sb_publishable_[A-Za-z0-9]{8,}")

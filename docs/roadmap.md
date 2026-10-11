@@ -248,6 +248,19 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
 - ✅ Mock REST lab (`lab/restapi/`, broken/correct via `rest-mode.sh`) with a sensitive
   endpoint + legitimately-public /health and /. Live-verified both modes. 43 unit tests.
 
+### Multi-module demo enablement ✅ (verified 2026-10-11)
+- ✅ Default "Run assessment" scope authorizes all three lab hosts (lab-rest, firebase-lab,
+  restapi-lab); the sample APK embeds all three backends so one upload exercises every
+  module.
+- ✅ Scope `authorized_hosts` now supports bounded suffix wildcards (e.g. `*.supabase.co`);
+  a bare `*` is intentionally NOT honored (default-deny). SSRF/private-IP guard still applies.
+- ✅ Report coverage counts all active check types (anon read, cross-tenant, Firebase,
+  generic REST), not just the Supabase anonymous read.
+- ✅ Firebase detection broadened to hosts containing "firebase" (covers emulator/self-hosted).
+- ✅ Planner prompt v2: clarifies that `authorized_resources` gates table checks only, and
+  nudges coverage across every in-scope backend before stopping. (Coverage remains
+  LLM-dependent; each module is independently verified by a live test.)
+
 ## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.

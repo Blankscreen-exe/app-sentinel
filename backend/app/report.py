@@ -39,8 +39,14 @@ def build_report(session: Session, assessment_id: str) -> dict[str, Any]:
     scope = json.loads(assessment.scope_configuration or "{}")
     confirmed = [f for f in findings if f.status == "confirmed"]
 
-    # Coverage from the actual execution record.
-    active = [e for e in execs if e.tool_name == "test_scoped_anonymous_read"]
+    # Coverage from the actual execution record. Active = any network check tool.
+    _ACTIVE_TOOLS = {
+        "test_scoped_anonymous_read",
+        "test_authenticated_tenant_isolation",
+        "test_firebase_rtdb_read",
+        "test_unauthenticated_endpoint",
+    }
+    active = [e for e in execs if e.tool_name in _ACTIVE_TOOLS]
     tested_tables = sorted(
         {_arg(e, "table") for e in active if e.status == "ok" and _arg(e, "table")}
     )

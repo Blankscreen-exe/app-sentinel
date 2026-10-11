@@ -48,7 +48,23 @@ class ScopeConfig(BaseModel):
         return resource_id is not None and resource_id in self.authorized_resources
 
     def host_authorized(self, host: str | None) -> bool:
-        return host is not None and host in self.authorized_hosts
+        """Exact match, or a bounded suffix wildcard like '*.supabase.co'.
+
+        A bare '*' is intentionally NOT honored — it would authorize every host and defeat
+        default-deny. The SSRF / private-destination guard still applies on top of this.
+        """
+        if host is None:
+            return False
+        for entry in self.authorized_hosts:
+            if entry == "*":
+                continue  # refuse match-all
+            if entry == host:
+                return True
+            if entry.startswith("*.") and (
+                host == entry[2:] or host.endswith(entry[1:])  # '*.x.com' -> '.x.com'
+            ):
+                return True
+        return False
 
 
 class ProposedAction(BaseModel):

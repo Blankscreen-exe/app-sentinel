@@ -135,7 +135,8 @@ lab/agent integration checks in `backend/tests/live_*.py`.
 ## Security posture & honesty
 
 - **Default-deny**: active testing is off until the scope authorizes it; discovered
-  resources start *unapproved*.
+  resources start *unapproved*. `authorized_hosts` matches exactly or by bounded suffix
+  wildcard (`*.supabase.co`); a bare `*` is never honored.
 - **SSRF / DNS-rebinding**: the network guard refuses private/loopback/reserved addresses
   unless an explicit lab target is authorized.
 - **Data minimization**: read-only, tiny row caps, evidence limited to status + counts +

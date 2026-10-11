@@ -141,3 +141,15 @@ def test_resource_must_be_approved() -> None:
     assert evaluate(ok, scope, resolver=_public_resolver).allowed
     d = evaluate(bad, scope, resolver=_public_resolver)
     assert not d.allowed and d.code == "resource_not_approved"
+
+
+def test_suffix_wildcard_host_authorized() -> None:
+    scope = ScopeConfig(active_testing_allowed=True, authorized_hosts=["*.supabase.co"])
+    assert scope.host_authorized("abcd1234.supabase.co")
+    assert not scope.host_authorized("evil.example.com")
+    assert not scope.host_authorized("notsupabase.co")
+
+
+def test_bare_star_does_not_authorize_everything() -> None:
+    scope = ScopeConfig(active_testing_allowed=True, authorized_hosts=["*"])
+    assert not scope.host_authorized("anything.example.com")
