@@ -14,6 +14,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
+# System libraries for WeasyPrint (HTML->PDF report export).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+        libjpeg62-turbo libopenjp2-7 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first for layer caching.
 COPY pyproject.toml ./
 RUN uv pip install --system -r pyproject.toml

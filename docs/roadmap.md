@@ -197,9 +197,15 @@ flagged. ~72 s, a few cents. Steps 1–4 complete.
 
 ---
 
-## Deferred until after step 4 ⏸️
+## Post-MVP (in progress)
 
-- ⏸️ Polished reports (HTML/PDF export), downloadable JSON.
+### Reports ✅ (verified 2026-10-11)
+- ✅ Report builder from persisted state only (no numeric score; "no findings" ≠ secure).
+- ✅ Downloadable **JSON**, standalone **HTML**, and **PDF** (WeasyPrint); links on the
+  assessment page. Executive summary, findings (evidence + reproduction + remediation),
+  coverage (completed / blocked / failed / inconclusive, tables assessed vs not), limitations.
+
+## Deferred ⏸️
 - ⏸️ Full dashboard polish and filtering.
 - ⏸️ Evaluation metrics (precision/recall/false-positive rate) against known-answer lab.
 - ⏸️ Authenticated-user and admin-metadata Supabase checks (Checks C & D).

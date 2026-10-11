@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Security Assessment Report — {{ r.executive_summary.assessment_id[:8] }}</title>
+<style>
+  body { font: 14px/1.55 ui-sans-serif, system-ui, Segoe UI, Roboto, sans-serif;
+         color: #1b2733; max-width: 820px; margin: 24px auto; padding: 0 20px; }
+  h1 { font-size: 22px; margin-bottom: 2px; } h2 { font-size: 17px; margin-top: 28px;
+       border-bottom: 1px solid #d7dee6; padding-bottom: 4px; }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  .muted { color: #67727e; } .small { font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+  td { padding: 4px 6px; border-bottom: 1px solid #e6ebf0; vertical-align: top; }
+  td.k { color: #67727e; width: 180px; }
+  .badge { font-size: 12px; border: 1px solid #c3ccd6; border-radius: 999px; padding: 1px 8px; }
+  .sev-high { color: #b3261e; border-color: #e3a9a4; }
+  .finding { border: 1px solid #d7dee6; border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
+  pre { background: #f3f6f9; border: 1px solid #e0e6ec; border-radius: 6px; padding: 8px;
+        font-size: 12px; overflow-x: auto; }
+  .note { background: #fff8e6; border: 1px solid #f0dca0; border-radius: 6px; padding: 8px 12px; }
+  ul { margin: 6px 0; } li { margin: 2px 0; }
+</style>
+</head>
+<body>
+  <h1>Security Assessment Report</h1>
+  <p class="muted small">Generated {{ r.generated_at }} · report v{{ r.report_version }}</p>
+
+  <h2>Executive summary</h2>
+  {% set s = r.executive_summary %}
+  <table>
+    <tr><td class="k">Application</td><td>{{ s.application or "—" }}</td></tr>
+    <tr><td class="k">Artifact</td><td>{{ s.artifact_filename or "—" }}</td></tr>
+    <tr><td class="k">Artifact SHA-256</td><td class="small">{{ s.artifact_sha256 or "—" }}</td></tr>
+    <tr><td class="k">Assessment</td><td>{{ s.assessment_id }} ({{ s.assessment_status }})</td></tr>
+    <tr><td class="k">Date</td><td>{{ s.assessment_date or "—" }}</td></tr>
+    <tr><td class="k">Confirmed findings</td><td>{{ s.confirmed_findings }} of {{ s.total_findings }} total</td></tr>
+  </table>
+  <p class="note small"><strong>Important:</strong> a completed assessment does not mean the
+  application is secure. Absence of findings is not evidence of security. No numeric security
+  score is produced.</p>
+
+  <h2>Findings</h2>
+  {% if r.findings %}
+    {% for f in r.findings %}
+    <div class="finding">
+      <h3>{{ f.title }}
+        <span class="badge sev-{{ f.severity }}">{{ f.severity }}</span>
+        <span class="badge">{{ f.status }}</span></h3>
+      <p class="small muted">confidence: {{ f.confidence }} · evidence quality: {{ f.evidence_quality }}
+        · id: {{ f.id[:8] }}</p>
+      <p><strong>Affected:</strong> {{ f.affected_resource }}</p>
+      <p><strong>Impact:</strong> {{ f.impact }}</p>
+      <p><strong>Reproduction:</strong> {{ f.reproduction }}</p>
+      <p><strong>Remediation:</strong> {{ f.remediation }}</p>
+      {% if f.evidence %}<p><strong>Evidence (minimal):</strong></p>
+      <pre>{{ f.evidence | tojson(indent=2) }}</pre>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No findings were recorded. This does not mean the application is secure.</p>
+  {% endif %}
+
+  <h2>Assessment coverage</h2>
+  {% set c = r.coverage %}
+  <table>
+    <tr><td class="k">Checks completed</td><td>{{ c.checks_completed }}</td></tr>
+    <tr><td class="k">Blocked by scope</td><td>{{ c.checks_blocked_by_scope }}</td></tr>
+    <tr><td class="k">Failed</td><td>{{ c.checks_failed }}</td></tr>
+    <tr><td class="k">Inconclusive</td><td>{{ c.checks_inconclusive }}</td></tr>
+    <tr><td class="k">Resources discovered</td><td>{{ c.resources_discovered }}</td></tr>
+    <tr><td class="k">Tables assessed</td><td>{{ c.tables_assessed | join(", ") or "—" }}</td></tr>
+    <tr><td class="k">Tables NOT assessed</td><td>{{ c.tables_not_assessed | join(", ") or "—" }}</td></tr>
+  </table>
+
+  <h2>Limitations</h2>
+  <ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+</body>
+</html>

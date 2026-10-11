@@ -61,6 +61,15 @@
     <span class="badge">{{ r.authorization_status }}</span></div>
   {% endfor %}
 </section>
+<section class="card">
+  <h2>Report</h2>
+  <p>
+    <a class="btn" href="/assessments/{{ a.id }}/report.html" target="_blank">View HTML</a>
+    <a class="btn" href="/assessments/{{ a.id }}/report.json">Download JSON</a>
+    <a class="btn" href="/assessments/{{ a.id }}/report.pdf">PDF</a>
+  </p>
+  <p class="muted small">PDF requires WeasyPrint; otherwise open the HTML report and print to PDF.</p>
+</section>
 <p><a href="/">Dashboard</a></p>
 
 <script>

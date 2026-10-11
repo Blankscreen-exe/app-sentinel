@@ -285,6 +285,60 @@ def _assessment_snapshot(session: Session, assessment_id: str) -> dict[str, Any]
     }
 
 
+@app.get("/assessments/{assessment_id}/report.json")
+def report_json(assessment_id: str, session: Session = Depends(get_session)) -> JSONResponse:
+    from app.report import build_report
+
+    try:
+        report = build_report(session, assessment_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="assessment not found") from None
+    return JSONResponse(
+        report,
+        headers={"Content-Disposition": f'attachment; filename="report-{assessment_id}.json"'},
+    )
+
+
+@app.get("/assessments/{assessment_id}/report.html", response_class=HTMLResponse)
+def report_html(
+    request: Request, assessment_id: str, session: Session = Depends(get_session)
+) -> HTMLResponse:
+    from app.report import build_report
+
+    try:
+        report = build_report(session, assessment_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="assessment not found") from None
+    return templates.TemplateResponse(request, "report.html", {"r": report})
+
+
+@app.get("/assessments/{assessment_id}/report.pdf")
+def report_pdf(assessment_id: str, session: Session = Depends(get_session)) -> Any:
+    """PDF export if WeasyPrint is available; otherwise guide to print the HTML report."""
+    from app.report import build_report
+
+    try:
+        report = build_report(session, assessment_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="assessment not found") from None
+    try:
+        from weasyprint import HTML  # type: ignore
+    except Exception:  # noqa: BLE001 - optional dependency
+        raise HTTPException(
+            status_code=501,
+            detail="PDF export unavailable; open report.html and print to PDF (Ctrl+P).",
+        ) from None
+    html = templates.get_template("report.html").render(r=report)
+    pdf = HTML(string=html).write_pdf()
+    from fastapi import Response
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="report-{assessment_id}.pdf"'},
+    )
+
+
 @app.get("/assessments/{assessment_id}/events")
 def assessment_events(assessment_id: str) -> StreamingResponse:
     """Server-sent events: stream the assessment trace until it finishes.

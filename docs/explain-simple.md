@@ -463,3 +463,22 @@ apart, and watch a real AI agent investigate — proposing checks, being allowed
 by plain code, and producing evidence-backed findings it can't fake. That is a working,
 evidence-driven agentic security tool, not a proof-of-concept that merely looks
 autonomous.
+
+---
+
+## Post-MVP 1 — Downloadable reports (done)
+
+**What this adds:** turn an assessment into a shareable report, in three formats:
+- **JSON** — the machine-readable version (for tooling / records).
+- **HTML** — a clean human-readable page.
+- **PDF** — the same report as a proper document to attach to an email or ticket.
+
+Every report is built **only from what we actually recorded** — findings, the steps taken,
+and what was and wasn't checked — so it never overstates. It includes an executive summary
+(what app, which artifact fingerprint, scope, how many confirmed findings), each finding
+with its impact, how to reproduce it, and how to fix it, plus a **coverage** section
+(what we checked, what the rulebook blocked, what tables we did *not* get to) and a plain
+**limitations** list. It deliberately shows **no single "security score"** (a made-up
+number would be dishonest) and states outright that no findings doesn't mean secure.
+
+Verified: JSON, HTML, and a real PDF all generate from the live Claude-driven assessment.
