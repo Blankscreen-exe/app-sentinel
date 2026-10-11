@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="appsentinel-arch" name="App Sentinel Architecture">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="App Sentinel — Architecture (local, single-operator)" style="text;html=1;fontSize=20;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="760" height="34" as="geometry" />
+        </mxCell>
+
+        <mxCell id="principle" value="CORE PRINCIPLE&#10;The LLM proposes.&#10;Deterministic code decides &amp; proves.&#10;(credentials &amp; hostile files never share a zone)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacing=8;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="50" width="330" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Operator + browser -->
+        <mxCell id="op" value="Operator (you)&#10;— only you, on this machine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="60" y="70" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="br" value="Web dashboard&#10;(Jinja pages + live SSE trace)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="280" y="70" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ZONE 2: Orchestrator -->
+        <mxCell id="z2" value="ZONE 2 — ORCHESTRATOR  (trusted: real data + all decisions)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="170" width="860" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="API — FastAPI&#10;upload · validate · pages&#10;enqueue jobs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="70" y="220" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="WORKER  (agent runtime)&#10;&#10;• Agent loop (orchestration)&#10;• SCOPE GATE — authorizes every action&#10;• VERIFIER — judges the real result&#10;• Registered tools (the only way to act)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="200" width="320" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="loop" value="Loop:  observe → decide (LLM) → validate → scope-gate → execute → verify → update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef3fb;strokeColor=#6c8ebf;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="350" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="maindb" value="main-db (PostgreSQL)&#10;data + job queue&#10;findings · steps (audit)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="670" y="210" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="storage" value="Storage (volume)&#10;APKs + evidence&#10;(internal keys)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="670" y="330" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="workernote" value="the worker is the ONLY service on both the main and sandbox networks" style="text;html=1;align=left;fontSize=11;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="300" y="410" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ZONE 1: Sandbox -->
+        <mxCell id="z1" value="ZONE 1 — APK SANDBOX  (untrusted files · NO internet · NO credentials)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="420" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="sbworker" value="sandbox-worker&#10;androguard (manifest)&#10;+ content scanner&#10;decompiles hostile APKs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="70" y="620" width="210" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="sbdb" value="sandbox-db&#10;(throwaway:&#10;queue + raw results)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="310" y="625" width="120" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ZONE 3: LLM gateway -->
+        <mxCell id="z3" value="ZONE 3 — LLM GATEWAY  (the only place credentials live)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="500" y="560" width="400" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="gw" value="llm-gateway&#10;Claude CLI — all tools OFF&#10;empty workdir&#10;prompt in → JSON out&#10;(never sees raw APKs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="530" y="620" width="210" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="claude" value="Claude&#10;(model)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="770" y="640" width="110" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Lab / target -->
+        <mxCell id="lab" value="LOCAL LAB  (authorized target · synthetic data)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="960" y="200" width="330" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="labrest" value="lab-rest (PostgREST)&#10;Supabase data API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="990" y="260" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="labdb" value="lab-db (PostgreSQL)&#10;Row Level Security&#10;broken / correct modes" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="990" y="340" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="realnote" value="A real app's real backend stays OUT OF SCOPE by default — the scope gate blocks it unless you explicitly authorize it." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="450" width="330" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="LEGEND&#10;Blue = trusted orchestrator  ·  Red = untrusted sandbox (sealed)&#10;Green = credential zone  ·  Purple = authorized target&#10;Solid arrow = request/data flow" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacing=8;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="600" width="330" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e_op_br" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="op" target="br">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_br_api" value="HTTP 127.0.0.1:8000" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="br" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_db" value="store + enqueue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="api" target="maindb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_store" value="save APK" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="api" target="storage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_db" value="read job · write findings/steps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="worker" target="maindb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_sbdb" value="outbox handoff ↔ results&#10;(validated as untrusted)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;" edge="1" parent="1" source="worker" target="sbdb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sbw_sbdb" value="jobs + raw results" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;" edge="1" parent="1" source="sbworker" target="sbdb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sbw_store" value="read APK (read-only)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;dashed=1;" edge="1" parent="1" source="sbworker" target="storage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_gw" value="prompt + JSON schema" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;" edge="1" parent="1" source="worker" target="gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gw_claude" value="API call (tools off)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;" edge="1" parent="1" source="gw" target="claude">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_lab" value="active check&#10;ONLY if scope authorizes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="worker" target="labrest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_labrest_labdb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=block;endArrow=block;fontSize=10;" edge="1" parent="1" source="labrest" target="labdb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
