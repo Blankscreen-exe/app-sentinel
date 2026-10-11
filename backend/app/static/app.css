@@ -94,3 +94,15 @@ th { text-align: left; }
   background: #0b0f14; border: 1px solid var(--border); border-radius: 6px;
   padding: 8px; font-size: 12px; overflow-x: auto; color: var(--muted);
 }
+
+.step {
+  border: 1px solid var(--border); border-left: 3px solid var(--border);
+  border-radius: 6px; padding: 8px 12px; margin: 8px 0;
+}
+.step-head { display: flex; align-items: center; gap: 8px; }
+.step-i { color: var(--muted); font-size: 12px; }
+.step-ok { border-left-color: #2ea043; }
+.step-gate_denied { border-left-color: #d29922; }
+.step-invalid_decision, .step-tool_failed { border-left-color: #ff6b6b; }
+.step-stopped { border-left-color: var(--accent); }
+.reason { color: #c9d4e0; margin: 6px 0 2px; }

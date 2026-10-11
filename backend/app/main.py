@@ -13,12 +13,22 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import time
+from collections.abc import Iterator
+
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+
+from app.db import SessionLocal
 
 from app.config import get_settings
 from app.db import get_session
@@ -226,5 +236,77 @@ def assessment_detail(
             "executions": executions,
             "findings": findings,
             "resources": resources,
+            "snapshot": _assessment_snapshot(session, assessment_id),
         },
     )
+
+
+def _assessment_snapshot(session: Session, assessment_id: str) -> dict[str, Any]:
+    """Current assessment state for the live trace (JSON-serializable)."""
+    a = session.get(Assessment, assessment_id)
+    if a is None:
+        return {"status": "not_found"}
+    execs = (
+        session.query(ToolExecution)
+        .filter_by(assessment_id=assessment_id)
+        .order_by(ToolExecution.step_index)
+        .all()
+    )
+    findings = session.query(Finding).filter_by(assessment_id=assessment_id).all()
+    return {
+        "status": a.status,
+        "stage": a.current_stage,
+        "steps": [
+            {
+                "i": e.step_index,
+                "tool": e.tool_name,
+                "status": e.status,
+                "gate_code": e.gate_code,
+                "outcome": e.outcome,
+                "rationale": e.rationale,
+                "detail": e.detail,
+                "arguments": e.arguments_json,
+            }
+            for e in execs
+        ],
+        "findings": [
+            {
+                "title": f.title,
+                "severity": f.severity,
+                "status": f.status,
+                "confidence": f.confidence,
+                "affected": f.affected_resource,
+                "impact": f.impact,
+                "remediation": f.remediation,
+                "evidence": f.evidence_json,
+            }
+            for f in findings
+        ],
+    }
+
+
+@app.get("/assessments/{assessment_id}/events")
+def assessment_events(assessment_id: str) -> StreamingResponse:
+    """Server-sent events: stream the assessment trace until it finishes.
+
+    Emits a full snapshot each tick (simple and reconnect-safe: a reconnecting client
+    just gets the current state). Uses its own short-lived sessions.
+    """
+
+    def gen() -> Iterator[str]:
+        last = None
+        for _ in range(600):  # ~20 min ceiling at 2s
+            session = SessionLocal()
+            try:
+                snap = _assessment_snapshot(session, assessment_id)
+            finally:
+                session.close()
+            payload = json.dumps(snap)
+            if payload != last:
+                yield f"data: {payload}\n\n"
+                last = payload
+            if snap.get("status") in ("completed", "failed", "not_found"):
+                break
+            time.sleep(2)
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
