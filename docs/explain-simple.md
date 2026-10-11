@@ -299,3 +299,44 @@ an app. If the AI ever says "go test that private server," the plain code says n
 everything; an un-approved address is refused; a private address is blocked by default but
 allowed once the lab is authorized; over-budget is refused; unsafe methods are refused;
 and so on. All green. No AI was involved in any of it — which is exactly the point.
+
+---
+
+## Step 3, slice 3 — The actual checks + the judge (done)
+
+**What this slice does:** builds the small set of **tools** the agent is allowed to use,
+and the **judge** (the "verifier") that decides what a result actually means — still with
+no AI involved. This is the part that proves the whole idea works.
+
+The tools (the agent can use *only* these, by name):
+- **classify a key** (no network): decides if a key is a harmless public one or a
+  genuinely secret one. Pure logic.
+- **a scoped anonymous read**: pretends to be a logged-out stranger and asks the backend
+  for **one** table — politely and minimally. It asks for at most **2 rows**, and only
+  keeps the column *names* and a row *count* as evidence, never the actual data. (That's
+  **data minimization** — we prove a leak exists without hoovering up the data.)
+
+Every network tool goes through the rulebook from the last slice, and uses a careful HTTP
+helper that won't follow sneaky redirects and caps how much it reads.
+
+**The judge (verifier).** When a check comes back, plain code — not the AI — decides the
+verdict from the *actual* response:
+- got rows as a stranger → **unauthorized access** (a real finding)
+- backend said "denied" (or an error code) → **access denied** (no finding)
+- reachable but zero rows → **empty / inconclusive** (no finding — could just be an empty
+  table or the rules quietly working)
+- couldn't connect → **network error**; the tool broke → **tool failure**
+
+The rule that matters: **the AI saying "I found a vulnerability" is never the proof. The
+response is.** A tool failing is not a finding. An empty result is not a finding.
+
+**How I proved it — the money shot.** I ran the real check against the live lab, both ways:
+- **broken** mode → `trips` and `invoices` handed over rows to an anonymous stranger →
+  judged **unauthorized access** (findings). `profiles` returned nothing → **not** flagged.
+- **correct** mode → everything returned nothing → **zero findings**.
+- And with the lab left *off* the approved list, the rulebook **blocked the check** even
+  though the tool was willing to run.
+
+That is the entire thesis of the project working end-to-end — and there is still **no AI
+in the loop**. The AI only arrives next, to *suggest* which of these checks to run.
+34 automated tests plus the live lab check, all green.

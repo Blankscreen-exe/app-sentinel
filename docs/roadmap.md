@@ -125,15 +125,20 @@ issue while refusing to over-claim.
   usage/cost logging, concurrency cap + timeout.
 - ⬜ Provider-independent client in the worker; versioned prompts + Pydantic schemas.
 
+### 3c-tools. Registered tools + Supabase checks + verifier ✅ (slice 3.3, verified 2026-10-11)
+- ✅ Tool registry + normalized `ToolResult` (no raw terminal output).
+- ✅ Scope-safe HTTP (no auto-redirects; every hop re-validated by the gate; capped body).
+- ✅ Supabase tools: `classify_client_key` (offline), `test_scoped_anonymous_read`
+  (read-only, anonymous, data-minimized — row cap 2, columns-only evidence).
+- ✅ Deterministic **verifier**: unauthorized_access / access_denied / empty /
+  network_error / tool_failure / inconclusive. LLM assertion is never the proof.
+- ✅ Live lab integration check (both modes): broken → trips+invoices = unauthorized_access
+  findings, profiles safe; correct → nothing; gate blocks unauthorized host. 34 unit tests.
+
 ### 3d. Agent loop
-- ⬜ Observe → decide → validate → scope gate → execute → verify → update.
-- ⬜ Deterministic **scope gate** (default deny) and **network scope** (SSRF/rebinding,
-  lab exception). Leash enforcement (ADR-011), reading settings (ADR-012).
-- ⬜ Registered tool interface; Supabase tools: classify key, config discovery, scoped
-  anonymous read; deterministic **verifier** with the distinct outcome classes.
-- ⬜ Finding lifecycle with evidence strength / impact / confidence; provenance to
-  execution + evidence.
-- ⬜ Persisted steps; resumable; cancellable; honest stop reasons.
+- ⬜ Observe → decide → validate → scope gate → execute → verify → update (loop).
+- ⬜ Finding + ToolExecution persistence with evidence; provenance.
+- ⬜ Persisted steps; resumable; cancellable; honest stop reasons; leash (ADR-011).
 
 **Acceptance:** public key alone ⇒ no confirmed vuln; out-of-scope target blocked;
 unregistered tool refused; injected instruction ignored by policy; tool failure ⇒
