@@ -80,10 +80,11 @@ Goal: upload a real APK and get honest, provenance-tagged analysis, with no LLM 
 - ✅ Analyzers: manifest facts (androguard) + content scan of text resources/assets for
   Supabase URLs, client keys, SDK markers, endpoints, cleartext HTTP, and table/bucket
   refs — each with entry+line provenance. Verified end to end 2026-10-11.
-- ⏸️ JADX decompilation (decompiled-Java scanning) deferred: needs a Java runtime in the
-  sandbox image and a real compiled APK to verify honestly; will be added and verified
-  against the lab app in step 3. The content scanner already covers Capacitor/RN-style
-  apps where config lives in assets/JS.
+- ✅ JADX decompilation (verified 2026-10-11): sandbox image ships JADX 1.5.0 + a JRE;
+  the analyzer decompiles DEX to Java (bounded by timeout + heap cap, scans partial
+  output on timeout) and runs the scanner over the sources. Verified end to end on a real
+  16 MB compiled app (Messenger Lite): previously 0 endpoints, now code-level endpoints
+  found and tagged `jadx-decompiled` with file+line provenance.
 - ✅ Secret classification + redaction, done inside the sandbox so secrets never leave it:
   `sb_publishable_`/anon → labelled public client key (kept, redacted); `sb_secret_`/
   service-role → sensitive, redacted to prefix+hash. Verified no raw secret is stored.

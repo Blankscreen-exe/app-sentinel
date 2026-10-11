@@ -69,7 +69,17 @@ def _finding(kind: str, name: str, entry: str, lineno: int, **extra: Any) -> dic
     return f
 
 
-def scan(path: str) -> list[dict[str, Any]]:
+# Decompiled-source suffixes worth scanning (JADX output).
+_CODE_SUFFIXES = (".java", ".smali", ".kt", ".xml", ".json", ".txt", ".properties")
+_MAX_CODE_FILES = 20000
+
+
+def scan(path: str, decompiled_dir: str | None = None) -> list[dict[str, Any]]:
+    """Scan the APK's text entries, and (optionally) a JADX-decompiled source tree.
+
+    Both share one dedup set so a value found in resources and in code is reported once.
+    Decompiled findings are tagged `jadx-decompiled` for provenance.
+    """
     findings: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()  # dedup by (kind, name) to limit noise
 
@@ -79,6 +89,10 @@ def scan(path: str) -> list[dict[str, Any]]:
             return
         seen.add(key)
         findings.append(f)
+
+    def add_decompiled(f: dict[str, Any]) -> None:
+        f["detection_method"] = "jadx-decompiled"
+        add(f)
 
     with zipfile.ZipFile(path) as zf:
         for info in zf.infolist():
@@ -97,7 +111,36 @@ def scan(path: str) -> list[dict[str, Any]]:
                 continue
             _scan_text(name, raw.decode("utf-8", errors="ignore"), add)
 
+    if decompiled_dir:
+        scan_tree(decompiled_dir, add_decompiled)
+
     return findings
+
+
+def scan_tree(root: str, add: Any) -> None:
+    """Walk decompiled sources and scan text files. Provenance is the relative path."""
+    import os
+
+    count = 0
+    for dirpath, _dirs, files in os.walk(root):
+        for fname in files:
+            if not fname.endswith(_CODE_SUFFIXES):
+                continue
+            count += 1
+            if count > _MAX_CODE_FILES:
+                return
+            full = os.path.join(dirpath, fname)
+            try:
+                if os.path.getsize(full) > _MAX_BYTES_PER_ENTRY:
+                    continue
+                with open(full, "rb") as fh:
+                    raw = fh.read()
+            except OSError:
+                continue
+            if b"\x00" in raw[:4096]:
+                continue
+            rel = os.path.relpath(full, root)
+            _scan_text(f"decompiled/{rel}", raw.decode("utf-8", errors="ignore"), add)
 
 
 def _scan_text(entry: str, text: str, add: Any) -> None:

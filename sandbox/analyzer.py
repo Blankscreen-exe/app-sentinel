@@ -38,18 +38,64 @@ def analyze(path: str) -> dict[str, Any]:
         "manifest_error": None,
         "discoveries": [],
         "scan_error": None,
+        "decompile": {"attempted": False, "ok": False, "error": None, "source_files": 0},
     }
     try:
         out["manifest"] = _manifest_facts(path)
     except Exception as exc:  # noqa: BLE001 - record, never crash the worker
         out["manifest_error"] = f"{type(exc).__name__}: {exc}"
+
+    # Decompile the DEX bytecode to Java (JADX) so compiled apps yield code-level
+    # discoveries, not just manifest + text-asset facts. Bounded by a timeout + mem cap;
+    # on failure/timeout we still scan the APK's text entries (and any partial sources).
+    decompiled_dir, dec_info = _decompile(path)
+    out["decompile"].update(dec_info)
     try:
         from scanner import scan
 
-        out["discoveries"] = scan(path)
+        out["discoveries"] = scan(path, decompiled_dir=decompiled_dir)
     except Exception as exc:  # noqa: BLE001
         out["scan_error"] = f"{type(exc).__name__}: {exc}"
     return out
+
+
+def _decompile(path: str) -> tuple[str | None, dict[str, Any]]:
+    """Run JADX into a temp dir. Returns (sources_dir_or_None, info). Never raises."""
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+
+    info: dict[str, Any] = {"attempted": False, "ok": False, "error": None, "source_files": 0}
+    jadx = shutil.which("jadx")
+    if jadx is None:
+        info["error"] = "jadx not installed"
+        return None, info
+
+    info["attempted"] = True
+    timeout = int(os.environ.get("JADX_TIMEOUT_SECONDS", "180"))
+    outdir = tempfile.mkdtemp(prefix="jadx-")
+    env = {**os.environ, "JAVA_OPTS": os.environ.get("JADX_JAVA_OPTS", "-Xmx1024m")}
+    try:
+        subprocess.run(
+            [jadx, "-d", outdir, "--no-res", "--no-debug-info", "-j", "1", path],
+            cwd=outdir, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+            timeout=timeout, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        # Partial output may still have been written; scan whatever exists.
+        info["error"] = f"jadx timed out after {timeout}s (scanning partial output)"
+    except Exception as exc:  # noqa: BLE001
+        info["error"] = f"{type(exc).__name__}: {exc}"
+        return outdir, info
+
+    # Count produced source files (jadx exits non-zero on partial decompiles, which is fine).
+    srcs = 0
+    for _d, _subdirs, files in os.walk(outdir):
+        srcs += sum(1 for f in files if f.endswith((".java", ".smali", ".kt")))
+    info["ok"] = srcs > 0
+    info["source_files"] = srcs
+    return outdir, info
 
 
 def _structure(path: str) -> dict[str, Any]:

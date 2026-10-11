@@ -541,3 +541,30 @@ first, always. It needs nothing but the app itself: no AI, no lab, no network.
 
 One command loads it; then you just open the assessment page. That's your break-glass
 demo.
+
+---
+
+## Expansion 1 — JADX: reading compiled apps (done)
+
+**The gap it closes:** earlier the tool could only read an app's *text* (resources, bundled
+JS). A normal compiled Android app (Kotlin/Java, like Messenger Lite) kept its logic in
+**compiled bytecode**, so we only saw manifest facts — no URLs, no keys, no code clues.
+
+**What JADX does:** it's a decompiler that turns the compiled bytecode back into readable
+Java. We added it to the sealed room, so now the demolition guy first takes the app apart,
+then **decompiles its code**, and our scanner reads *that* too — finding endpoints, keys,
+SDKs and table references buried in the program, each tagged with the decompiled file and
+line it came from.
+
+It's **bounded**: decompiling a big app is slow and memory-hungry, so there's a time limit
+and a memory cap. If a huge app doesn't finish in time, we scan whatever was produced so
+far rather than hanging — honest partial results.
+
+**Proof:** I ran it on the real 16 MB Messenger Lite APK you uploaded. Before JADX it found
+**zero** endpoints (just permissions and an SDK name). After JADX it decompiled ~3,000
+source files and pulled **real Facebook endpoints straight out of the code**, each with a
+`decompiled/…:line` location. Same tool, much wider reach — it now works on ordinary
+compiled apps, not just web-tech ones.
+
+(Note: the active *testing* modules still only understand Supabase backends — that's a
+separate expansion. JADX widened what we can *see* inside any app.)

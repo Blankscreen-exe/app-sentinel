@@ -147,8 +147,9 @@ lab/agent integration checks in `backend/tests/live_*.py`.
 
 - Local single-operator; not multi-user or internet-exposed as-is.
 - Android APKs only; Supabase/PostgREST is the only backend module.
-- JADX decompilation of compiled code is deferred (the content scanner covers
-  Capacitor/React-Native-style apps where config ships in assets/JS).
+- JADX decompiles compiled DEX so real Kotlin/Java apps yield code-level findings
+  (bounded by a timeout; large apps scan partial output). Active-check modules still
+  cover Supabase only.
 - The committed lab uses a **synthetic** schema; it is not any real client's data.
 
 ## Documentation
