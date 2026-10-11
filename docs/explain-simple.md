@@ -372,3 +372,46 @@ So: the booth is built and its plumbing is verified (it starts, takes requests, 
 its limits, handles errors cleanly). Talking to the *real* Claude inside it needs your
 one-time login — and we already proved real Claude works headless back in the first
 experiment. 37 automated tests pass.
+
+---
+
+## Step 3, slice 5 — The agent loop: putting it all together (done)
+
+**What this slice does:** connects every piece into the actual investigator. One step at
+a time, the AI *suggests* a check; the rulebook decides if it's allowed; the tool runs;
+the judge rules on the result; and we write down what happened. Then repeat, until there's
+nothing useful left to do or the budget runs out.
+
+Each loop step:
+1. **Look** at what we know (the leads, the scope, how much budget is left).
+2. **Ask the advisor** for the single best next check (a structured answer).
+3. **Check it's real** — is this a tool we actually have? Are the arguments sane? (If the
+   AI invents a tool, we reject the step.)
+4. **Run it past the rulebook** — allowed? (If not, we record "blocked" and move on. The
+   check never runs.)
+5. **Do it** — run the safe tool.
+6. **Judge the result** — and only if the judge says "real leak" do we write a **finding**.
+7. **Write the step down** — *every* step, including blocked and failed ones, so the whole
+   run can be audited later. A crash can never look like success.
+
+The loop always stops: it runs out of useful checks, hits the step limit, or spends its
+request budget — then it stops cleanly with a stated reason.
+
+**A finding, when we create one, is complete:** what leaked, how bad, how confident we are,
+the minimal evidence (status + row count + column names — never the data itself), the
+impact in plain terms, and concrete remediation (e.g. "turn on RLS for this table and add
+policies").
+
+**The full demo, proven live** (I scripted a stand-in advisor so no login was needed, but
+every *other* part was the real thing — real tools, real lab, real rulebook, real judge,
+saved to the real database):
+- **broken** lab → the agent checked three tables, **confirmed leaks on `trips` and
+  `invoices`**, and correctly **left `profiles` alone**, then stopped.
+- **correct** lab → **zero findings**.
+- **lab left off the approved list** → the rulebook **blocked every check**, zero findings.
+
+That is the complete answer to the original interview question, running end to end: it
+discovers, it reasons, it checks *only what it's allowed to*, it proves with evidence, and
+it doesn't cry wolf. The only thing standing between this and a fully AI-driven run is
+your one-time Claude login; everything the AI would drive is built and tested. 37 tests
+plus two live end-to-end checks, all green.

@@ -8,6 +8,7 @@ DNS-rebinding).
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -22,9 +23,17 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_session
 from app.logging_setup import configure_logging, new_trace_id
-from app.models import ApplicationArtifact, Project, StaticAnalysis
+from app.models import (
+    ApplicationArtifact,
+    Assessment,
+    AttackSurfaceResource,
+    Finding,
+    Project,
+    StaticAnalysis,
+    ToolExecution,
+)
 from app.services.artifacts import UploadTooLarge, intake_apk
-from app.tasks import analyze_artifact
+from app.tasks import analyze_artifact, run_assessment
 from app.worker import app as procrastinate_app
 from app.worker import ping
 
@@ -162,3 +171,60 @@ def start_analysis(
     with procrastinate_app.open():
         analyze_artifact.defer(artifact_id=artifact_id)
     return RedirectResponse(url=f"/artifacts/{artifact_id}", status_code=303)
+
+
+# Default lab scope: authorizes the local lab target only. The operator edits scope per
+# assessment in a real engagement; this convenience default is for the local demo.
+_DEFAULT_LAB_SCOPE = json.dumps({
+    "active_testing_allowed": True,
+    "authorized_hosts": ["lab-rest"],
+    "authorized_resources": ["table:trips", "table:invoices", "table:profiles"],
+    "allow_lab_targets": True,
+    "max_active_requests": 30,
+})
+
+
+@app.post("/artifacts/{artifact_id}/assess")
+def start_assessment(
+    artifact_id: str, session: Session = Depends(get_session)
+) -> RedirectResponse:
+    """Create an assessment for an analyzed artifact and enqueue the agent run."""
+    artifact = session.get(ApplicationArtifact, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    assessment = Assessment(
+        artifact_id=artifact_id, status="created", scope_configuration=_DEFAULT_LAB_SCOPE
+    )
+    session.add(assessment)
+    session.commit()
+    with procrastinate_app.open():
+        run_assessment.defer(assessment_id=assessment.id)
+    return RedirectResponse(url=f"/assessments/{assessment.id}", status_code=303)
+
+
+@app.get("/assessments/{assessment_id}", response_class=HTMLResponse)
+def assessment_detail(
+    request: Request, assessment_id: str, session: Session = Depends(get_session)
+) -> HTMLResponse:
+    assessment = session.get(Assessment, assessment_id)
+    if assessment is None:
+        raise HTTPException(status_code=404, detail="assessment not found")
+    executions = (
+        session.query(ToolExecution)
+        .filter_by(assessment_id=assessment_id)
+        .order_by(ToolExecution.step_index)
+        .all()
+    )
+    findings = session.query(Finding).filter_by(assessment_id=assessment_id).all()
+    resources = session.query(AttackSurfaceResource).filter_by(assessment_id=assessment_id).all()
+    return templates.TemplateResponse(
+        request,
+        "assessment.html",
+        {
+            "env": _settings.app_env,
+            "a": assessment,
+            "executions": executions,
+            "findings": findings,
+            "resources": resources,
+        },
+    )

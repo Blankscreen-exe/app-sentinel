@@ -141,10 +141,24 @@ issue while refusing to over-claim.
 - ✅ Live lab integration check (both modes): broken → trips+invoices = unauthorized_access
   findings, profiles safe; correct → nothing; gate blocks unauthorized host. 34 unit tests.
 
-### 3d. Agent loop
-- ⬜ Observe → decide → validate → scope gate → execute → verify → update (loop).
-- ⬜ Finding + ToolExecution persistence with evidence; provenance.
-- ⬜ Persisted steps; resumable; cancellable; honest stop reasons; leash (ADR-011).
+### 3d. Agent loop ✅ (slice 3.5, verified 2026-10-11)
+- ✅ Bounded loop: observe → decide (LLM) → validate → scope gate → execute → verify →
+  update. LLM proposes; code decides and proves.
+- ✅ `ToolExecution` (every step, including gate-denied/invalid/failed — auditable) and
+  `Finding` persistence with evidence + provenance (migration 0004).
+- ✅ Leash: step cap + active-request cap; honest stop reasons (planner_stop /
+  budget_exhausted / step_cap / llm_error).
+- ✅ `run_assessment` task + API (`/artifacts/{id}/assess`, `/assessments/{id}`) + page.
+- ✅ Scanner refined: public keys (publishable / anon JWT) kept (needed to test), secrets
+  (sb_secret_ / service_role JWT) redacted.
+- ✅ **Live end-to-end agent check** (scripted stub planner + real tools/lab):
+  broken → confirmed findings on trips+invoices, profiles NOT flagged; correct → zero
+  findings; out-of-scope target → gate-denied, zero findings. 37 unit tests.
+
+**Step 3 acceptance — met:** public key alone ⇒ no confirmed vuln; out-of-scope target
+blocked; unregistered tool refused (loop validation); tool failure ⇒ not a finding;
+broken-mode misconfig ⇒ confirmed evidence-backed finding (minimal data); correct ⇒ none;
+budget/step caps stop cleanly; works without an LLM key (surface-only).
 
 **Acceptance:** public key alone ⇒ no confirmed vuln; out-of-scope target blocked;
 unregistered tool refused; injected instruction ignored by policy; tool failure ⇒

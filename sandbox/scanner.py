@@ -48,6 +48,21 @@ def _redact(value: str) -> str:
     return f"{value[:10]}…[REDACTED sha256:{digest}]"
 
 
+def _jwt_role(token: str) -> str | None:
+    """Best-effort decode of a JWT payload's `role` claim (no signature check)."""
+    import base64
+    import json as _json
+
+    try:
+        payload_b64 = token.split(".")[1]
+        payload_b64 += "=" * (-len(payload_b64) % 4)
+        payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
+        role = payload.get("role")
+        return str(role) if role is not None else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _finding(kind: str, name: str, entry: str, lineno: int, **extra: Any) -> dict[str, Any]:
     f = {"kind": kind, "name": name, "location": f"{entry}:{lineno}", "detection_method": "content-scan"}
     f.update(extra)
@@ -105,7 +120,9 @@ def _scan_text(entry: str, text: str, add: Any) -> None:
             else:
                 add(_finding("endpoint", url, entry, lineno, confidence="medium"))
         for m in _SB_PUBLISHABLE.finditer(line):
-            add(_finding("client_key", _redact(m.group(0)), entry, lineno,
+            # Publishable keys are public by design — kept unredacted (needed to test the
+            # backend's authorization), and explicitly labelled as not-a-secret.
+            add(_finding("client_key", m.group(0), entry, lineno,
                          detail="Supabase publishable (public client) key — not a secret",
                          confidence="high", classification="public_client_key",
                          needs_runtime_validation=True))
@@ -115,10 +132,20 @@ def _scan_text(entry: str, text: str, add: Any) -> None:
                          confidence="high", classification="sensitive_secret",
                          severity_hint="high"))
         for m in _JWT.finditer(line):
-            add(_finding("jwt", _redact(m.group(0)), entry, lineno,
-                         detail="JWT-form token; role (anon vs service) needs decoding",
-                         confidence="medium", classification="jwt_unclassified",
-                         needs_runtime_validation=True))
+            token = m.group(0)
+            role = _jwt_role(token)
+            if role in ("anon", "authenticated"):
+                # A public client JWT (anon/authenticated) — kept, needed for testing.
+                add(_finding("client_key", token, entry, lineno,
+                             detail=f"Supabase {role} JWT (public client key) — not a secret",
+                             confidence="high", classification="public_client_key",
+                             needs_runtime_validation=True))
+            else:
+                # service_role or undetermined → treat as sensitive and redact.
+                add(_finding("secret", _redact(token), entry, lineno,
+                             detail=f"JWT token (role={role or 'unknown'}) — treat as sensitive",
+                             confidence="medium", classification="sensitive_secret",
+                             severity_hint="high"))
         for m in _TABLE.finditer(line):
             add(_finding("table_ref", m.group(1), entry, lineno,
                          detail="referenced database table/view", confidence="medium"))

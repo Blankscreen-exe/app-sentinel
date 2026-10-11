@@ -14,7 +14,7 @@ from app.analysis.ingest import ingest
 from app.config import get_settings
 from app.db import SessionLocal
 from app.logging_setup import new_trace_id
-from app.models import ApplicationArtifact, StaticAnalysis
+from app.models import ApplicationArtifact, Assessment, StaticAnalysis
 from app.sandbox_bridge import enqueue_analysis, read_result
 from app.worker import app
 
@@ -92,5 +92,56 @@ def analyze_artifact(artifact_id: str) -> None:
             analysis.error = f"invalid sandbox output: {type(exc).__name__}: {exc}"
             session.commit()
             logger.info("analyze_artifact: invalid sandbox output")
+    finally:
+        session.close()
+
+
+@app.task(name="run_assessment")
+def run_assessment(assessment_id: str) -> None:
+    """Build the attack surface, then run the bounded agent loop (if an LLM is configured)."""
+    new_trace_id()
+    from app.agent.loop import run_assessment_loop
+    from app.llm.client import get_llm_client
+    from app.services.surface import build_attack_surface
+
+    session = SessionLocal()
+    try:
+        assessment = session.get(Assessment, assessment_id)
+        if assessment is None:
+            return
+        assessment.status = "running"
+        assessment.current_stage = "attack_surface"
+        session.commit()
+
+        build_attack_surface(session, assessment_id, assessment.artifact_id)
+
+        client = get_llm_client()
+        if client is None:
+            assessment.status = "completed"
+            assessment.current_stage = "no_llm"
+            assessment.failure_reason = "no LLM configured (LLM_MODE=disabled); static analysis only"
+            session.commit()
+            logger.info("run_assessment: no LLM configured; attack surface only")
+            return
+
+        assessment.current_stage = "agent_loop"
+        session.commit()
+        settings = get_settings()
+        summary = run_assessment_loop(
+            session, assessment_id, client, max_steps=settings.max_agent_steps
+        )
+        assessment.status = "completed"
+        assessment.current_stage = "done"
+        session.commit()
+        logger.info("run_assessment done",
+                    extra={"extra": {"findings": summary.findings, "stop": summary.stop_reason}})
+    except Exception as exc:  # noqa: BLE001 - mark failed, never silently "complete"
+        session.rollback()
+        a = session.get(Assessment, assessment_id)
+        if a is not None:
+            a.status = "failed"
+            a.failure_reason = f"{type(exc).__name__}: {exc}"[:500]
+            session.commit()
+        logger.info("run_assessment failed", extra={"extra": {"error": type(exc).__name__}})
     finally:
         session.close()

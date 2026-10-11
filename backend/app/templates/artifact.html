@@ -72,6 +72,17 @@
       <strong>This does not mean the app is secure</strong> — only that this static pass
       found nothing notable in what it can currently inspect.</p>
     {% endif %}
+
+    {% if analysis and analysis.status == "analyzed" %}
+    <h3 class="small">Assessment</h3>
+    <p class="muted small">
+      Run the bounded agent to investigate these leads with authorized, safe checks.
+      Requires an LLM (LLM_MODE=gateway) to plan; otherwise it builds the attack surface only.
+    </p>
+    <form method="post" action="/artifacts/{{ a.id }}/assess">
+      <button type="submit">Run assessment</button>
+    </form>
+    {% endif %}
   {% endif %}
 </section>
 {% endif %}

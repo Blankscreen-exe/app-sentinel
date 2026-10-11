@@ -3,6 +3,7 @@
 from app.models.analysis import Discovery, StaticAnalysis
 from app.models.base import Base
 from app.models.core import ApplicationArtifact, Assessment, Project, Setting
+from app.models.execution import Finding, ToolExecution
 from app.models.surface import AttackSurfaceResource
 
 __all__ = [
@@ -14,4 +15,6 @@ __all__ = [
     "StaticAnalysis",
     "Discovery",
     "AttackSurfaceResource",
+    "ToolExecution",
+    "Finding",
 ]

@@ -25,7 +25,7 @@ def _valid_payload() -> dict:
         "discoveries": [
             {
                 "kind": "client_key",
-                "name": "sb_publish…[REDACTED sha256:5ec69168]",
+                "name": "sb_publishable_AbCdEf0123456789xyzTESTvalue",
                 "location": "assets/config.js:4",
                 "detection_method": "content-scan",
                 "detail": "Supabase publishable (public client) key — not a secret",
@@ -49,8 +49,8 @@ def test_ingest_persists_scan_findings_with_classification() -> None:
     analysis = StaticAnalysis(artifact_id="x", status="analyzing")
     ingest(analysis, _valid_payload())
     key = next(d for d in analysis.discoveries if d.kind == "client_key")
-    # The public key is kept only in redacted form and labelled as a public client key.
-    assert "REDACTED" in key.name
+    # A public client key is KEPT (needed to test the backend) and labelled as public.
+    assert key.name.startswith("sb_publishable_")
     assert "public_client_key" in (key.detail or "")
     assert key.needs_runtime_validation is True
     endpoint = next(d for d in analysis.discoveries if d.kind == "endpoint")

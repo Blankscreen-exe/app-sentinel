@@ -87,3 +87,10 @@ table.kv td.muted { width: 130px; }
 
 h4.group { margin: 16px 0 4px; text-transform: capitalize; }
 th { text-align: left; }
+
+.finding { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+.finding .badge { margin-left: 6px; }
+.evidence {
+  background: #0b0f14; border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px; font-size: 12px; overflow-x: auto; color: var(--muted);
+}
