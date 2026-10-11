@@ -102,10 +102,14 @@ LLM key. 12 unit tests pass (config, validation, ingest).
 Goal: the core demo. The agent reasons over the attack surface and safely confirms a real
 issue while refusing to over-claim.
 
-### 3a. Test lab (ADR-009)
-- ⬜ `lab/`: local Supabase (trimmed), schema-only load, synthetic multi-tenant seed data.
-- ⬜ `as-is` and `broken` modes; one reset command; known-answer bugs in `broken`.
-- ⬜ Small sample Android app whose embedded config points at the local lab; build script.
+### 3a. Test lab (ADR-009, ADR-014) ✅ (slice 3.1, verified 2026-10-11)
+- ✅ `lab/`: minimal Supabase data-API surface (Postgres + PostgREST), SYNTHETIC
+  multi-tenant schema + seed (publishable; not the client schema, per ADR-010).
+- ✅ `broken` / `correct` modes via `mode.sh`; re-applies base schema + RLS overlay and
+  reloads PostgREST. Known-answer bugs: RLS-off table, permissive anon policy, bypass
+  view, plus a locked true-negative table. All four verified by anonymous curl.
+- ✅ Sample APK (`build_sample_apk.py`) embedding the lab URL + anon JWT + table refs;
+  verified the scanner extracts them.
 
 ### 3b. Attack-surface model
 - ⬜ Resource/technology/relationship entities with provenance and confidence.

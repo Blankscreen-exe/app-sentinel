@@ -1,0 +1,43 @@
+# Local lab backend (ADR-014): the minimal Supabase data-API surface —
+# Postgres + PostgREST — deliberately misconfigurable for authorized assessment.
+# SYNTHETIC data only. Run from the lab/ dir:  docker compose -f docker-compose.lab.yml up -d
+#
+# The REST API is published on 127.0.0.1:3001 for host verification. The JWT secret and
+# anon key here are lab-only and intentionally public; never reuse them anywhere real.
+
+services:
+  lab-db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: labsuper
+      POSTGRES_DB: postgres
+    volumes:
+      - ./sql/00_roles.sql:/docker-entrypoint-initdb.d/00_roles.sql:ro
+      - lab-db-data:/var/lib/postgresql/data
+    networks: [lab-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  lab-rest:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://authenticator:labpass@lab-db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: "lab_jwt_secret_change_me_0123456789_abcdef"
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    networks: [lab-net]
+
+volumes:
+  lab-db-data:
+
+networks:
+  lab-net:
+    name: app_sentinel_lab-net

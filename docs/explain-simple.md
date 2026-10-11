@@ -224,3 +224,40 @@ way, and keeps the honest framing front and centre.
 That completes step 2: you can upload a real app, have it safely taken apart in the sealed
 room, and read a clear, honest list of what's inside and where — all with no AI involved
 yet. The AI (the agent) and the safe backend testing come in step 3.
+
+---
+
+## Step 3, slice 1 — The practice target (the "lab") (done)
+
+**What this slice does:** builds a small, fake backend on your machine that we're *allowed*
+to attack, set up so we know the right answers in advance. It's how we prove the tool
+finds real problems and doesn't cry wolf.
+
+Think of it as a **crash-test dummy**. It's a cut-down version of what Supabase actually
+is under the hood — a **database** (Postgres) plus the **web API** that phone apps talk to
+(**PostgREST**) — with the same permission system (**RLS**, row-level security: rules about
+who can read which rows). All the data is invented; nothing real.
+
+It has a switch with two settings:
+- **broken** — someone forgot to lock things down. The `trips` table has its rules turned
+  **off**, the `invoices` table has a rule that says "anyone can read," and there's even a
+  sneaky **view** (a saved query) that leaks data around the rules.
+- **correct** — everything locked down properly.
+
+And one table, `profiles`, is locked in **both** modes on purpose — it's the "don't cry
+wolf" test: the tool must stay silent about it.
+
+**Why the two modes matter:** when the agent runs later, we can point it at **broken** and
+check it finds exactly the real leaks (and flags `profiles` as safe), then point it at
+**correct** and check it reports **nothing**. That's how you measure a security tool
+honestly — not by how many alarms it raises, but by whether it's right.
+
+**How I proved it:** I asked the backend, *as an anonymous stranger*, to read each table.
+In **broken**, `trips`, `invoices`, and the sneaky view all handed over data, while
+`profiles` correctly refused. In **correct**, everything refused. Exactly the expected
+answers. I also built the fake phone app that carries this lab's address and keys, and
+confirmed our scanner pulls them out.
+
+**One choice I made for your safety:** the lab uses a made-up schema, not your client's
+real one, so the public repo never contains the client's design. The client app stays a
+private test target only.

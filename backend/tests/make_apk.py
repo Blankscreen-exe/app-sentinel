@@ -144,33 +144,47 @@ def build_axml(
 # Realistic discoverable content placed in asset files (as a Capacitor/RN-style app
 # would ship). Values are synthetic. The "publishable" key is a public client key
 # (NOT a secret); the service_role-looking token is the kind that WOULD be sensitive.
-_ASSET_JS = """
-// bundled app config (synthetic test data)
-const SUPABASE_URL = "https://abcd1234test.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_AbCdEf0123456789xyzTESTvalue";
-const api = "https://api.example-lab.test/v1/trips";
+_DEFAULT_URL = "https://abcd1234test.supabase.co"
+_DEFAULT_KEY = "sb_publishable_AbCdEf0123456789xyzTESTvalue"
+
+
+def _asset_js(url: str, key: str, tables: tuple[str, ...]) -> str:
+    froms = "\n".join(f'supabase.from("{t}").select("*");' for t in tables)
+    return f"""
+// bundled app config (synthetic test data) — uses @supabase/supabase-js
+const SUPABASE_URL = "{url}";
+const SUPABASE_PUBLISHABLE_KEY = "{key}";
 const insecure = "http://plaintext.example-lab.test/ping";
-supabase.from("trips").select("*");
+{froms}
 supabase.storage.from("receipts").list();
 """
 
-_STRINGS_XML = """<?xml version="1.0" encoding="utf-8"?>
+
+def _strings_xml(url: str, key: str) -> str:
+    return f"""<?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="supabase_url">https://abcd1234test.supabase.co</string>
-  <string name="supabase_key">sb_publishable_AbCdEf0123456789xyzTESTvalue</string>
+  <string name="supabase_url">{url}</string>
+  <string name="supabase_key">{key}</string>
 </resources>
 """
 
 
-def build_apk(path: str, *, with_assets: bool = True) -> str:
+def build_apk(
+    path: str,
+    *,
+    with_assets: bool = True,
+    supabase_url: str = _DEFAULT_URL,
+    supabase_key: str = _DEFAULT_KEY,
+    tables: tuple[str, ...] = ("trips",),
+) -> str:
     """Write a minimal valid APK to ``path`` and return it."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("AndroidManifest.xml", build_axml())
         zf.writestr("classes.dex", b"dex\n035\x00" + b"\x00" * 100)
         zf.writestr("resources.arsc", b"\x02\x00\x0c\x00" + b"\x00" * 8)
         if with_assets:
-            zf.writestr("assets/config.js", _ASSET_JS)
-            zf.writestr("res/values/strings.xml", _STRINGS_XML)
+            zf.writestr("assets/config.js", _asset_js(supabase_url, supabase_key, tables))
+            zf.writestr("res/values/strings.xml", _strings_xml(supabase_url, supabase_key))
     return path
 
 
