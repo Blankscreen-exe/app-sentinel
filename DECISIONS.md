@@ -502,3 +502,32 @@ Reasoning (production terms, not spec compliance):
 - **LlamaIndex remains a candidate later, scoped to code retrieval only**, if plain text
   search over decompiled sources stops scaling. It would be a component in the retrieval
   step, never an orchestration backbone.
+
+---
+
+## ADR-014: Lab backend — minimal PostgREST stack first
+
+- **Date:** 2026-10-11
+- **Status:** accepted
+- **Refines:** ADR-009
+
+### Context
+
+ADR-009 said "real local Supabase." Implementing step 3, the only attack surface the
+agent actually exercises for the MVP is the anonymous/authenticated REST data API plus
+RLS. The full Supabase CLI stack (~10 containers) is heavy on the 13 GB laptop.
+
+### Decision
+
+Start the lab with a **minimal stack: Postgres + PostgREST + GoTrue** (anon/authenticated
+roles, JWT keys, RLS) — this is exactly what Supabase's data API is underneath, so
+anonymous-read and RLS checks are authentic. Prototype slice 3.1 on it, then **revisit
+before the demo** whether to upgrade to the full Supabase CLI stack for authenticity.
+
+### Consequences
+
+- Lighter, faster lab; runs comfortably during a live demo.
+- Caveat to disclose: "the lab runs Supabase's underlying data API (PostgREST+GoTrue+
+  Postgres), not the full product." Upgrade path to the full stack kept open.
+- The agent's Supabase tools target the REST API + key formats, which are identical in
+  both, so the control plane does not change if we upgrade later.
