@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     app_env: str = Field("local", description="Environment name for logs.")
     log_level: str = Field("INFO")
 
+    # --- Artifact storage + upload limits (ADR-004c, untrusted-input defence) ---
+    data_dir: str = Field("/data", description="Root for artifact/evidence storage.")
+    max_upload_bytes: int = Field(300 * 1024 * 1024, ge=1)  # 300 MB
+    max_uncompressed_bytes: int = Field(2 * 1024 * 1024 * 1024, ge=1)  # 2 GB zip-bomb ceiling
+    max_zip_entries: int = Field(100_000, ge=1)
+
     # Leash defaults (ADR-011). These seed the settings table; they are not the
     # live source of truth once the settings table exists.
     max_agent_steps: int = Field(15, ge=1)

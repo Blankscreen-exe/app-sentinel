@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Upload an APK</h1>
+  <p class="muted small">
+    Only upload applications you own or are explicitly authorized to assess. The file is
+    validated by content (not by its extension) before anything else touches it.
+  </p>
+  {% if error %}
+  <p class="error">Upload rejected: {{ error }}</p>
+  {% endif %}
+  <form method="post" action="/upload" enctype="multipart/form-data">
+    <label>Project name
+      <input type="text" name="project_name" placeholder="e.g. lab-demo" />
+    </label>
+    <label>APK file
+      <input type="file" name="file" accept=".apk,application/vnd.android.package-archive" required />
+    </label>
+    <button type="submit">Upload &amp; validate</button>
+  </form>
+</section>
+{% endblock %}

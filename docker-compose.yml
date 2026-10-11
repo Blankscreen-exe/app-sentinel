@@ -53,6 +53,10 @@ services:
       MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
       APP_ENV: ${APP_ENV:-local}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data   # artifact/evidence storage, reachable on the host (ADR-004c)
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     ports:
       - "127.0.0.1:8000:8000"   # localhost only (ADR-007)
     depends_on:
@@ -68,6 +72,10 @@ services:
     environment:
       MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     depends_on:
       main-db:
         condition: service_healthy

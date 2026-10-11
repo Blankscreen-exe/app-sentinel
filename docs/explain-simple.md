@@ -86,3 +86,37 @@ failure behind a "carry on anyway" line — the task-queue tables never got crea
 only the honest `/health` check (returning an error) exposed it. I fixed it to check
 first and fail loudly. It's a live example of *why* health checks must tell the truth and
 *why* hiding errors is dangerous.
+
+---
+
+## Step 2, slice 1 — Uploading and checking the file safely (done)
+
+**What this slice does:** lets you upload an app file through a web page, and makes sure
+it's a real, safe app file before keeping it.
+
+Think of it as the **mailroom** checking a parcel before it's allowed inside:
+
+- **It won't trust the label.** A file called `something.apk` means nothing — we check
+  the actual contents. An APK is really a **ZIP** archive, so we look inside and require
+  the tell-tale `AndroidManifest.xml` to be there. (Checking content, not extension.)
+- **It weighs the parcel as it arrives.** The upload is written to a **quarantine** temp
+  folder in chunks, counting bytes as they come. If it goes over the size limit, we stop
+  and throw it away immediately — a giant file can't fill the disk.
+- **It refuses booby-trapped parcels.** Two classic attacks are blocked:
+  - a **zip bomb** — a tiny file that unpacks into something huge to exhaust the disk; we
+    add up the unpacked sizes first and reject if they're too big.
+  - a **path-traversal** entry — a file inside the ZIP named like `../../etc/evil` that
+    tries to escape and overwrite things elsewhere; any such entry gets the whole upload
+    rejected.
+- **It fingerprints what it keeps.** For a good file we compute a **SHA-256** (a unique
+  fingerprint of the exact bytes) and store the file under *that* name, not its original
+  one. Same file uploaded twice = stored once (**deduplication**). The original filename
+  is kept only as a note in the database.
+- **Rejected files are never stored.** If it fails any check, we record *that it was
+  rejected and why*, and delete the bytes. We don't keep hostile files around.
+
+**How I proved it:** I uploaded three files — a proper app-shaped one, one with a
+`../../etc/evil` booby-trap entry, and one that was just text pretending to be an app.
+The good one was accepted and stored (as a single fingerprint-named file); the other two
+were both rejected and left nothing on disk. Six automated tests cover these cases, plus
+the zip-bomb and empty-file ones.

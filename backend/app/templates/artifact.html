@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Artifact</h1>
+  <p><strong>{{ a.filename }}</strong></p>
+  <table class="kv">
+    <tr><td class="muted">Status</td>
+      <td>
+        {% if a.upload_status == "uploaded" %}<span class="badge ok">uploaded</span>
+        {% elif a.upload_status == "rejected" %}<span class="badge bad">rejected</span>
+        {% else %}<span class="badge">{{ a.upload_status }}</span>{% endif %}
+      </td></tr>
+    <tr><td class="muted">SHA-256</td><td class="mono small">{{ a.sha256 }}</td></tr>
+    <tr><td class="muted">Size</td><td>{{ a.file_size }} bytes</td></tr>
+    <tr><td class="muted">Platform</td><td>{{ a.platform }}</td></tr>
+    <tr><td class="muted">Uploaded</td><td>{{ a.created_at }}</td></tr>
+  </table>
+  {% if a.upload_status == "uploaded" %}
+  <p class="muted small">Static analysis runs in the sandbox — wired in the next slice.</p>
+  {% else %}
+  <p class="muted small">This file was not stored because it failed validation.</p>
+  {% endif %}
+</section>
+<p><a href="/upload">&larr; Upload another</a> &nbsp; <a href="/">Dashboard</a></p>
+{% endblock %}

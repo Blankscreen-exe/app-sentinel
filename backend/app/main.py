@@ -12,8 +12,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, text
@@ -22,7 +22,8 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_session
 from app.logging_setup import configure_logging, new_trace_id
-from app.models import Project
+from app.models import ApplicationArtifact, Project
+from app.services.artifacts import UploadTooLarge, intake_apk
 from app.worker import app as procrastinate_app
 from app.worker import ping
 
@@ -95,3 +96,47 @@ def enqueue_ping() -> dict[str, str]:
         ping.defer(message="hello-from-api")
     logger.info("ping enqueued")
     return {"enqueued": "ping"}
+
+
+@app.get("/upload", response_class=HTMLResponse)
+def upload_form(request: Request, error: str | None = None) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "upload.html", {"env": _settings.app_env, "error": error}
+    )
+
+
+@app.post("/upload")
+def upload_submit(
+    request: Request,
+    project_name: str = Form(""),
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Browser upload form. Streams, validates, and stores the APK.
+
+    This is a same-origin form submission (Host-allowlisted above), so it is not a
+    CSRF vector; the JSON API variant still requires the custom header.
+    """
+    try:
+        outcome = intake_apk(
+            session,
+            project_name=project_name,
+            filename=file.filename or "upload.apk",
+            src=file.file,
+        )
+    except UploadTooLarge as exc:
+        return RedirectResponse(url=f"/upload?error={exc}", status_code=303)
+
+    return RedirectResponse(url=f"/artifacts/{outcome.artifact.id}", status_code=303)
+
+
+@app.get("/artifacts/{artifact_id}", response_class=HTMLResponse)
+def artifact_detail(
+    request: Request, artifact_id: str, session: Session = Depends(get_session)
+) -> HTMLResponse:
+    artifact = session.get(ApplicationArtifact, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return templates.TemplateResponse(
+        request, "artifact.html", {"env": _settings.app_env, "a": artifact}
+    )

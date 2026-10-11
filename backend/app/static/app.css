@@ -57,3 +57,30 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 footer { margin: 32px auto 40px; }
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.error { color: #ff6b6b; }
+
+label { display: block; margin: 14px 0; }
+input[type="text"], input[type="file"] {
+  display: block; margin-top: 6px; width: 100%;
+  background: #0f1419; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px;
+}
+button, .btn {
+  display: inline-block; margin-top: 8px; cursor: pointer;
+  background: var(--accent); color: #04121f; font-weight: 600;
+  border: none; border-radius: 6px; padding: 9px 16px; text-decoration: none;
+}
+button:hover, .btn:hover { filter: brightness(1.08); text-decoration: none; }
+
+table.kv { border-collapse: collapse; width: 100%; }
+table.kv td { padding: 7px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.kv td.muted { width: 130px; }
+
+.badge {
+  font-size: 12px; border-radius: 999px; padding: 2px 10px;
+  border: 1px solid var(--border); color: var(--muted);
+}
+.badge.ok { color: #7ee787; border-color: #2ea04366; }
+.badge.bad { color: #ff6b6b; border-color: #ff6b6b55; }

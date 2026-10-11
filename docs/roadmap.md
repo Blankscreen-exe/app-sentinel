@@ -62,13 +62,16 @@ missing/empty config gives a clear error.
 
 ---
 
-## Step 2 — Artifact intake + static analysis ⬜
+## Step 2 — Artifact intake + static analysis 🔨
 
 Goal: upload a real APK and get honest, provenance-tagged analysis, with no LLM involved.
 
-- ⬜ Upload endpoint + page; stream to storage under an internal key.
-- ⬜ Artifact validation: size limit, real-zip sniff, sha256, decompression ceiling,
-  path-traversal rejection, archive-bomb guard; reject malformed; never trust extension.
+- ✅ Upload endpoint + page; stream to storage under an internal (content-addressed) key.
+  Verified 2026-10-11.
+- ✅ Artifact validation: streaming size limit, real-zip sniff (magic bytes), sha256,
+  decompression ceiling (zip-bomb guard), path-traversal rejection, manifest-presence
+  APK check; reject malformed; never trust extension. Rejected files are not stored.
+  9 unit tests + end-to-end good/malicious/non-zip upload verified.
 - ⬜ Sandbox handoff via outbox pattern (ADR-005); idempotent sandbox job.
 - ⬜ `sandbox-worker`: androguard (manifest, permissions, cert, strings) + JADX
   (decompile for code/line evidence). Pinned versions; no network.
