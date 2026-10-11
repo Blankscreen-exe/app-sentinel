@@ -71,6 +71,7 @@ services:
     command: ["procrastinate", "--app=app.worker.app", "worker"]
     environment:
       MAIN_DATABASE_URL: postgresql://sentinel:${MAIN_DB_PASSWORD:-sentinel}@main-db:5432/sentinel
+      SANDBOX_DATABASE_URL: postgresql://sandbox:${SANDBOX_DB_PASSWORD:-sandbox}@sandbox-db:5432/sandbox
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATA_DIR: /data
     volumes:
@@ -79,12 +80,20 @@ services:
     depends_on:
       main-db:
         condition: service_healthy
+      sandbox-db:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     networks: [main-net, sandbox-net]   # the only service on both
 
   sandbox-worker:
     build: ./sandbox
+    environment:
+      SANDBOX_DATABASE_URL: postgresql://sandbox:${SANDBOX_DB_PASSWORD:-sandbox}@sandbox-db:5432/sandbox
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data:ro   # read-only: the sandbox never modifies stored artifacts
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     depends_on:
       sandbox-db:
         condition: service_healthy

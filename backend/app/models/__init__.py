@@ -1,6 +1,15 @@
 """ORM models."""
 
+from app.models.analysis import Discovery, StaticAnalysis
 from app.models.base import Base
 from app.models.core import ApplicationArtifact, Assessment, Project, Setting
 
-__all__ = ["Base", "Project", "ApplicationArtifact", "Assessment", "Setting"]
+__all__ = [
+    "Base",
+    "Project",
+    "ApplicationArtifact",
+    "Assessment",
+    "Setting",
+    "StaticAnalysis",
+    "Discovery",
+]

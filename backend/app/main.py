@@ -22,8 +22,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_session
 from app.logging_setup import configure_logging, new_trace_id
-from app.models import ApplicationArtifact, Project
+from app.models import ApplicationArtifact, Project, StaticAnalysis
 from app.services.artifacts import UploadTooLarge, intake_apk
+from app.tasks import analyze_artifact
 from app.worker import app as procrastinate_app
 from app.worker import ping
 
@@ -137,6 +138,27 @@ def artifact_detail(
     artifact = session.get(ApplicationArtifact, artifact_id)
     if artifact is None:
         raise HTTPException(status_code=404, detail="artifact not found")
-    return templates.TemplateResponse(
-        request, "artifact.html", {"env": _settings.app_env, "a": artifact}
+    analysis = (
+        session.query(StaticAnalysis).filter_by(artifact_id=artifact_id).one_or_none()
     )
+    discoveries = analysis.discoveries if analysis else []
+    return templates.TemplateResponse(
+        request,
+        "artifact.html",
+        {"env": _settings.app_env, "a": artifact, "analysis": analysis, "discoveries": discoveries},
+    )
+
+
+@app.post("/artifacts/{artifact_id}/analyze")
+def start_analysis(
+    artifact_id: str, session: Session = Depends(get_session)
+) -> RedirectResponse:
+    """Trigger static analysis (same-origin form POST)."""
+    artifact = session.get(ApplicationArtifact, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    if artifact.upload_status != "uploaded":
+        raise HTTPException(status_code=400, detail="artifact is not in an analyzable state")
+    with procrastinate_app.open():
+        analyze_artifact.defer(artifact_id=artifact_id)
+    return RedirectResponse(url=f"/artifacts/{artifact_id}", status_code=303)

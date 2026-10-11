@@ -33,3 +33,10 @@ def ping(message: str = "pong") -> str:
     tid = new_trace_id()
     logger.info("ping task executed", extra={"extra": {"message": message, "trace_id": tid}})
     return message
+
+
+# Register orchestration tasks on this app. Imported last to avoid a circular import
+# (app.tasks imports `app` from here, which is already defined above).
+# NOTE: use `import ... as` — a bare `import app.tasks` would rebind the name `app`
+# in this module to the `app` *package*, shadowing the App instance above.
+import app.tasks as _tasks  # noqa: E402,F401

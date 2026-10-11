@@ -120,3 +120,49 @@ Think of it as the **mailroom** checking a parcel before it's allowed inside:
 The good one was accepted and stored (as a single fingerprint-named file); the other two
 were both rejected and left nothing on disk. Six automated tests cover these cases, plus
 the zip-bomb and empty-file ones.
+
+---
+
+## Step 2, slice 2 — Taking the app apart, safely (done)
+
+**What this slice does:** sends an uploaded app into the **sealed room** (the sandbox),
+takes it apart there, and brings back a list of what's inside — without the sealed room
+ever being able to reach our real data or the internet.
+
+The hand-off is the interesting part. The sealed room and the main office have
+**separate filing cabinets** (two databases) that can't see each other. So how does a job
+cross safely? Like a **drop box between two locked rooms** (this pattern is called an
+**outbox**):
+
+1. The main office writes a work ticket into the sealed room's drop box.
+2. The demolition guy (`sandbox-worker`) picks it up, takes the app apart with a tool
+   called **androguard**, and puts the results back in the drop box. He never touches our
+   real cabinet — he *can't*, it's on a different network he can't even see.
+3. The main office collects the results from the drop box, **double-checks they're the
+   right shape** (treats them as untrusted), and only then files them in the real cabinet.
+
+**What androguard pulls out** (the app's "ingredients label", the **manifest**): the app's
+package name, what **permissions** it asks for, which screens are **exported** (openable by
+other apps), and risky flags like **debuggable**. Each finding is saved with **provenance**
+— where it was found (`AndroidManifest.xml`) and how (`androguard`). Important: these are
+**observations, not verdicts**. "This app can use the internet" is a fact, not a
+vulnerability.
+
+**A detail I'm a little proud of:** to test this without a real phone app, I hand-built a
+tiny but *genuine* Android app file, including the manifest in Android's real **binary**
+format (not plain text) — and androguard read it correctly. So the test exercises the real
+tool, not a fake.
+
+**Two real bugs this slice caught (good interview stories):**
+- A one-line Python import (`import app.tasks`) silently **overwrote** the name of our
+  task-runner object with the name of a code folder, so the worker "couldn't find" itself.
+  The fix was a different import style. Lesson: name collisions can hide in plain sight.
+- A safety setting in a startup script (`set -e`, "stop on any error") was killing the
+  script on a line that was *deliberately* signalling "schema not set up yet." Fixed by
+  catching that one signal. Lesson: "fail on any error" needs care around intentional
+  non-zero signals.
+
+**How I proved it:** uploaded the real sample app, triggered analysis, and watched the job
+travel to the sealed room and the results come back into the real cabinet with three
+tagged findings. Re-running analysis did **not** pile up duplicates. Confirmed the sealed
+room cannot even find the main cabinet's address. 12 automated tests now pass.

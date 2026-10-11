@@ -72,17 +72,21 @@ Goal: upload a real APK and get honest, provenance-tagged analysis, with no LLM 
   decompression ceiling (zip-bomb guard), path-traversal rejection, manifest-presence
   APK check; reject malformed; never trust extension. Rejected files are not stored.
   9 unit tests + end-to-end good/malicious/non-zip upload verified.
-- ⬜ Sandbox handoff via outbox pattern (ADR-005); idempotent sandbox job.
-- ⬜ `sandbox-worker`: androguard (manifest, permissions, cert, strings) + JADX
-  (decompile for code/line evidence). Pinned versions; no network.
-- ⬜ Analyzers: manifest facts, permissions, exported components, cleartext/debuggable,
-  embedded URLs/keys/SDK refs, table/bucket references — each with file+location,
-  detection method, confidence.
+- ✅ Sandbox handoff via outbox pattern (ADR-005); idempotent sandbox job (queueing lock)
+  and idempotent re-analysis. Verified 2026-10-11 end to end across both databases.
+- ✅ `sandbox-worker`: real Procrastinate worker on sandbox-db running androguard
+  (manifest, permissions, exported components, flags). Pinned; isolated (confirmed it
+  cannot resolve/reach main-db). JADX decompilation deferred to slice 2.3.
+- 🔨 Analyzers: manifest facts, permissions, exported components, cleartext/debuggable
+  done. Embedded URLs/keys/SDK refs + table/bucket references come with JADX (slice 2.3).
 - ⬜ Secret classification + redaction (a public key is labelled as such, not a "secret").
-- ⬜ Persist validated results into main-db; render an analysis page.
+- ✅ Persist validated results into main-db (untrusted payload validated via Pydantic);
+  analysis shown on the artifact page with provenance. Dedicated results page = slice 2.4.
 
-**Acceptance:** a valid sample APK uploads and analyzes; invalid artifacts are rejected;
-limits enforced; every discovery carries provenance; works with no LLM key.
+**Acceptance (slice 2.2):** a real sample APK uploads, hands off to the isolated sandbox,
+androguard extracts manifest facts, and provenance-tagged discoveries are validated back
+into main-db; re-analysis does not duplicate; sandbox cannot reach main-db; works with no
+LLM key. 12 unit tests pass (config, validation, ingest).
 
 ---
 

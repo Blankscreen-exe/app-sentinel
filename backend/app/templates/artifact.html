@@ -15,11 +15,50 @@
     <tr><td class="muted">Platform</td><td>{{ a.platform }}</td></tr>
     <tr><td class="muted">Uploaded</td><td>{{ a.created_at }}</td></tr>
   </table>
-  {% if a.upload_status == "uploaded" %}
-  <p class="muted small">Static analysis runs in the sandbox — wired in the next slice.</p>
-  {% else %}
+  {% if a.upload_status != "uploaded" %}
   <p class="muted small">This file was not stored because it failed validation.</p>
   {% endif %}
 </section>
+
+{% if a.upload_status == "uploaded" %}
+<section class="card">
+  <h2>Static analysis</h2>
+  {% if not analysis %}
+    <p class="muted">Not analyzed yet. Runs in the isolated sandbox (no code is executed).</p>
+    <form method="post" action="/artifacts/{{ a.id }}/analyze">
+      <button type="submit">Analyze in sandbox</button>
+    </form>
+  {% else %}
+    <p>Status:
+      {% if analysis.status == "analyzed" %}<span class="badge ok">analyzed</span>
+      {% elif analysis.status == "failed" %}<span class="badge bad">failed</span>
+      {% else %}<span class="badge">{{ analysis.status }}</span>{% endif %}
+      {% if analysis.status in ["queued", "analyzing"] %}
+        <span class="muted small">— refresh in a few seconds</span>
+      {% endif %}
+    </p>
+    {% if analysis.error %}<p class="error small">{{ analysis.error }}</p>{% endif %}
+
+    {% if discoveries %}
+    <h3 class="small">Discoveries <span class="muted">({{ discoveries|length }})</span></h3>
+    <p class="muted small">Observations with provenance — not confirmed vulnerabilities.</p>
+    <table class="kv">
+      <tr><th class="muted small">Kind</th><th class="muted small">Name</th>
+          <th class="muted small">Where</th><th class="muted small">Via</th></tr>
+      {% for d in discoveries %}
+      <tr>
+        <td class="small">{{ d.kind }}{% if d.severity_hint %} <span class="muted">({{ d.severity_hint }})</span>{% endif %}</td>
+        <td class="small mono">{{ d.name }}</td>
+        <td class="small muted">{{ d.location }}</td>
+        <td class="small muted">{{ d.detection_method }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% elif analysis.status == "analyzed" %}
+    <p class="muted">No notable discoveries. This does not mean the app is secure.</p>
+    {% endif %}
+  {% endif %}
+</section>
+{% endif %}
 <p><a href="/upload">&larr; Upload another</a> &nbsp; <a href="/">Dashboard</a></p>
 {% endblock %}

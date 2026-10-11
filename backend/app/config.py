@@ -21,6 +21,14 @@ class Settings(BaseSettings):
         min_length=1,
         description="SQLAlchemy/psycopg DSN for the main database.",
     )
+    # Reachable only from the worker (ADR-005). Optional for the API process.
+    sandbox_database_url: str = Field(
+        "",
+        description="libpq DSN for sandbox-db; required by the worker, unused by the API.",
+    )
+    # How long the orchestrator waits for the sandbox to finish one analysis.
+    analysis_timeout_seconds: int = Field(300, ge=1)
+    analysis_poll_seconds: int = Field(2, ge=1)
 
     # --- Operational tuning (seed defaults; the settings table overrides later, ADR-012) ---
     app_env: str = Field("local", description="Environment name for logs.")
